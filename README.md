@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ABHI-KUNI — ଅବିନାଶ ରଥ
 
-## Getting Started
+A personal website showcasing Odia music lyrics and writings by **ଅବିନାଶ ରଥ**.
 
-First, run the development server:
+## Features
+- 🔤 Noto Sans Odia font for all lyrics
+- 🎨 AI-generated artwork per song (Google Gemini)
+- 🌙 Light/dark mode
+- 📂 Browse by category (ଗୀତ / ଭଜନ / ଲୋକ) and date
+- 🖨️ Print / PDF export
+- 🔗 Social sharing
+- 🔐 Password-protected admin panel to add/edit/delete songs
 
+## Setup
+
+### 1. Install dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Set up Supabase
+1. Create a free project at [supabase.com](https://supabase.com)
+2. Go to **SQL Editor** → paste and run `supabase/migration.sql`
+3. Go to **Storage** → create a bucket named `song-artwork` → set to **Public**
+4. Copy your project URL, anon key, and service role key from **Settings → API**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Set up environment variables
+Copy `.env.local` and fill in your keys:
+```
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
+ADMIN_PASSWORD=YOUR_SECRET_PASSWORD
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+```
+Get your Gemini API key from: https://aistudio.google.com/app/apikey
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Run locally
+```bash
+npm run dev
+```
+Open http://localhost:3000
 
-## Learn More
+### 5. Admin panel
+Go to http://localhost:3000/admin and enter your admin password.
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy to Vercel
+```bash
+npx vercel
+```
+Add all environment variables in the Vercel dashboard under **Settings → Environment Variables**.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Tech Stack
+- Next.js 14 (App Router)
+- Tailwind CSS
+- Supabase (PostgreSQL + Storage)
+- Google Gemini AI (image generation)
+- Lucide Icons
+- next-themes (dark mode)
