@@ -1,3 +1,4 @@
+'use client';
 import type { Song } from '@/types/song';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';

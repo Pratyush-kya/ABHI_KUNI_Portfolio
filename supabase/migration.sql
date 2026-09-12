@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS songs (
   title           TEXT NOT NULL,
   slug            TEXT UNIQUE NOT NULL,
   lyrics          TEXT NOT NULL,
-  category        TEXT NOT NULL CHECK (category IN ('ଗୀତ', 'ଭଜନ', 'ଲୋକ')),
-  author          TEXT NOT NULL DEFAULT 'ଅବିନାଶ ରଥ',
+  category        TEXT NOT NULL CHECK (category IN ('ଗୀତ')),
+  author          TEXT NOT NULL DEFAULT 'Abinash Rath',
   cover_image_url TEXT,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()

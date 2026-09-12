@@ -1,13 +1,14 @@
 export function generateSlug(title: string): string {
-  return (
-    title
-      .trim()
-      .toLowerCase()
-      .replace(/[\s]+/g, '-')
-      .replace(/[^\w\u0B00-\u0B7F-]/g, '')
-      .replace(/--+/g, '-')
-      .replace(/^-|-$/g, '') || `song-${Date.now()}`
-  );
+  // Always append a timestamp suffix to guarantee uniqueness
+  const base = title
+    .trim()
+    .toLowerCase()
+    .replace(/[\s]+/g, '-')
+    .replace(/[^\w\u0B00-\u0B7F-]/g, '')
+    .replace(/--+/g, '-')
+    .replace(/^-|-$/g, '');
+  // suffix prevents duplicate-slug DB constraint errors
+  return `${base || 'song'}-${Date.now()}`;
 }
 
 export function formatDate(isoString: string): string {

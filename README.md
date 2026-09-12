@@ -1,6 +1,6 @@
-# ABHI-KUNI — ଅବିନାଶ ରଥ
+# ABHI-KUNI — Abinash Rath
 
-A personal website showcasing Odia music lyrics and writings by **ଅବିନାଶ ରଥ**.
+A personal website showcasing Odia music lyrics and writings by **Abinash Rath**.
 
 ## Features
 - 🔤 Noto Sans Odia font for all lyrics

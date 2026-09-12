@@ -30,7 +30,7 @@ export default async function AdminLoginPage({
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="font-ui font-bold text-2xl text-zinc-900 dark:text-zinc-50">Admin Panel</h1>
-          <p className="font-odia text-zinc-500 dark:text-zinc-400 mt-1">ABHI-KUNI · ଅବିନାଶ ରଥ</p>
+          <p className="font-ui text-zinc-500 dark:text-zinc-400 mt-1">ABHI-KUNI · Abinash Rath</p>
         </div>
         <form action={login} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-4">
           {error && (
