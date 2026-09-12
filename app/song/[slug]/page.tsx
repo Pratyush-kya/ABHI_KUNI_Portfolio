@@ -2,12 +2,11 @@ import { supabase } from '@/lib/supabase';
 import { formatDate } from '@/lib/utils';
 import type { Song } from '@/types/song';
 import { notFound } from 'next/navigation';
-import Image from 'next/image';
 import SharePrintButtons from '@/components/SharePrintButtons';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import ClientImageLightbox from '@/components/ClientImageLightbox';
 
-// Make sure to decode the slug because Next.js sometimes preserves URL encoding for Unicode
 async function getSong(slug: string): Promise<Song | null> {
   const decodedSlug = decodeURIComponent(slug);
   const { data } = await supabase.from('songs').select('*').eq('slug', decodedSlug).single();
@@ -39,9 +38,7 @@ export default async function SongPage({ params }: { params: Promise<{ slug: str
       </Link>
 
       {song.cover_image_url && (
-        <div className="relative h-64 w-full rounded-2xl overflow-hidden mb-8">
-          <Image src={song.cover_image_url} alt={song.title} fill className="object-cover" />
-        </div>
+        <ClientImageLightbox src={song.cover_image_url} alt={song.title} />
       )}
 
       <div className="mb-8">
@@ -54,7 +51,7 @@ export default async function SongPage({ params }: { params: Promise<{ slug: str
       </div>
 
       <div className="mb-10">
-        <pre className="lyrics-block font-odia text-xl text-zinc-100 leading-loose whitespace-pre-wrap break-words bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+        <pre className="lyrics-block font-odia text-xl text-zinc-100 leading-loose whitespace-pre-wrap break-words bg-zinc-900 rounded-2xl p-6 border border-zinc-800 shadow-xl">
           {song.lyrics}
         </pre>
       </div>

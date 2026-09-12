@@ -26,18 +26,23 @@ export async function POST(req: NextRequest) {
     const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
     
     const llmPrompt = `
-You are an expert AI image prompt engineer. 
-I am providing you with the title and lyrics of an Odia devotional/folk song. 
-Since image generators do not understand Odia script, you must read the Odia text, understand its core spiritual, cultural, or emotional meaning (such as references to Lord Jagannath, Kalia, nature, devotion, or life philosophy), and write a highly descriptive visual prompt in ENGLISH.
+You are an expert AI image prompt engineer creating stunning, high-definition (HD) album cover art/poster designs for Odia devotional or folk songs.
+I am providing you with the title and lyrics of a song.
+Read the Odia text, understand its core spiritual, cultural, or emotional meaning, and write a highly descriptive, visually breathtaking prompt in ENGLISH.
 
 Odia Title: "${title}"
-Odia Lyrics: "${lyrics ? lyrics.slice(0, 400) : ''}..."
+Odia Lyrics: "${lyrics ? lyrics.slice(0, 500) : ''}..."
 
 Write ONLY the english image generation prompt. Do not add any introductory text.
-Make it visually stunning, culturally accurate to Odisha/India, and specify the style as "high quality, cinematic, highly detailed Indian painting aesthetic, vibrant colors". Do NOT include people's faces up close if it's anime-like, stick to traditional Indian art, silhouettes, or abstract spiritual concepts.
+Requirements:
+1. Make it incredibly beautiful, photorealistic, HD poster quality (8k resolution style).
+2. Deeply link the visual elements directly to the specific meaning of the title and lyrics.
+3. Include dynamic lighting, vibrant colors, cinematic composition.
+4. Culturally accurate to Odisha/India but with a modern, highly attractive aesthetic to captivate viewers immediately.
+5. If it's a devotional song, depict the divine elements beautifully and respectfully without making it look like a cheap cartoon. Use surreal, majestic, and glowing aesthetics.
     `.trim();
 
-    let englishImagePrompt = "Beautiful abstract modern Indian music artwork, vibrant saffron and gold colors, traditional Odisha cultural elements.";
+    let englishImagePrompt = "A breathtaking, ultra-HD cinematic poster of Indian spirituality, golden hour lighting, highly detailed traditional Indian aesthetic, glowing particles, 8k resolution, masterpiece.";
     
     try {
       const result = await model.generateContent(llmPrompt);
@@ -55,8 +60,8 @@ Make it visually stunning, culturally accurate to Odisha/India, and specify the 
     
     try {
       const seed = Math.floor(Math.random() * 9999999);
-      // Landscape aspect ratio (1280x720) looks much better on the song page
-      const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&nologo=true&seed=${seed}`;
+      // Generate HD landscape poster (1920x1080) using the 'flux' model for incredible quality
+      const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1920&height=1080&nologo=true&seed=${seed}&model=flux`;
       
       const imgRes = await fetch(pollUrl);
       if (!imgRes.ok) throw new Error('Failed to fetch from free image generation API');
