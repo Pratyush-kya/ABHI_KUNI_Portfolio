@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import sharp from 'sharp';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,23 +12,18 @@ export async function POST(req: NextRequest) {
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const hfApiKey = process.env.HUGGINGFACE_API_KEY;
     
     if (!supabaseUrl || !serviceRoleKey || serviceRoleKey === 'YOUR_SERVICE_ROLE_KEY') {
       return NextResponse.json({ error: 'Supabase Service Role Key is not configured for storage upload' }, { status: 500 });
     }
 
-    if (!hfApiKey) {
-      return NextResponse.json({ error: 'HUGGINGFACE_API_KEY is not configured' }, { status: 500 });
-    }
-
     // Step 1: Use Gemini Text model to understand the Odia lyrics and generate a visual English prompt
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    if (!geminiApiKey) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
       return NextResponse.json({ error: 'GEMINI_API_KEY is not configured' }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
     
     const llmPrompt = `
@@ -40,7 +36,7 @@ Odia Lyrics: "${lyrics ? lyrics.slice(0, 500) : ''}..."
 
 Write ONLY the english image generation prompt. Do not add any introductory text.
 Requirements:
-1. Make it incredibly beautiful, photorealistic, HD poster quality.
+1. Make it incredibly beautiful, photorealistic, HD poster quality (8k resolution style).
 2. Deeply link the visual elements directly to the specific meaning of the title and lyrics.
 3. Include dynamic lighting, vibrant colors, cinematic composition.
 4. Culturally accurate to Odisha/India but with a modern, highly attractive aesthetic to captivate viewers immediately.
@@ -59,42 +55,46 @@ Requirements:
       console.error('Gemini text translation failed, using fallback prompt:', llmError);
     }
 
-    // Step 2: Generate HD image via Hugging Face Inference API (FLUX.1-schnell)
+    // Step 2: Pass the translated English prompt to Pollinations
     let imageBuffer: ArrayBuffer;
+    let mimeType = 'image/jpeg';
     
     try {
-      const hfRes = await fetch('https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${hfApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          inputs: englishImagePrompt,
-          parameters: {
-            width: 1280,
-            height: 720
-          }
-        })
-      });
+      const seed = Math.floor(Math.random() * 9999999);
+      // Generate HD landscape poster using the 'flux' model for incredible quality
+      const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&nologo=true&seed=${seed}&model=flux-realism`;
       
-      if (!hfRes.ok) {
-        const errText = await hfRes.text();
-        throw new Error(`Hugging Face API failed: ${hfRes.status} ${errText}`);
-      }
-      
-      imageBuffer = await hfRes.arrayBuffer();
+      const imgRes = await fetch(pollUrl);
+      if (!imgRes.ok) throw new Error('Failed to fetch from free image generation API');
+      imageBuffer = await imgRes.arrayBuffer();
+      mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
     } catch (genError: any) {
-      console.error('Image generation error:', genError);
+      console.error('Image generation fallback error:', genError);
       return NextResponse.json({ error: `AI Image API Error: ${genError.message}` }, { status: 500 });
     }
 
-    const finalBuffer = Buffer.from(imageBuffer);
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+    let finalBuffer = Buffer.from(imageBuffer);
+    
+    // Step 3: Automatically crop out the Pollinations watermark at the bottom using sharp
+    try {
+      const metadata = await sharp(finalBuffer).metadata();
+      if (metadata.width && metadata.height) {
+        // Crop the bottom 65 pixels to completely ensure no watermark remains
+        const cropHeight = Math.max(1, metadata.height - 65);
+        finalBuffer = await sharp(finalBuffer)
+          .extract({ width: metadata.width, height: cropHeight, left: 0, top: 0 })
+          .toBuffer();
+      }
+    } catch (cropError) {
+      console.error('Failed to crop watermark, proceeding with original:', cropError);
+    }
+
+    const ext = mimeType.includes('png') ? 'png' : 'jpg';
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
       .from('song-artwork')
-      .upload(fileName, finalBuffer, { contentType: 'image/jpeg', upsert: false });
+      .upload(fileName, finalBuffer, { contentType: mimeType, upsert: false });
 
     if (uploadError) {
       console.error('Supabase upload error:', uploadError);
