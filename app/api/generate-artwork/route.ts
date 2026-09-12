@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import sharp from 'sharp';
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,13 +26,13 @@ export async function POST(req: NextRequest) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
     
-    const llmPrompt = `
+    const llmPrompt = \`
 You are an expert AI image prompt engineer creating stunning, high-definition (HD) album cover art/poster designs for Odia devotional or folk songs.
 I am providing you with the title and lyrics of a song.
 Read the Odia text, understand its core spiritual, cultural, or emotional meaning, and write a highly descriptive, visually breathtaking prompt in ENGLISH.
 
-Odia Title: "${title}"
-Odia Lyrics: "${lyrics ? lyrics.slice(0, 500) : ''}..."
+Odia Title: "\${title}"
+Odia Lyrics: "\${lyrics ? lyrics.slice(0, 500) : ''}..."
 
 Write ONLY the english image generation prompt. Do not add any introductory text.
 Requirements:
@@ -40,7 +41,7 @@ Requirements:
 3. Include dynamic lighting, vibrant colors, cinematic composition.
 4. Culturally accurate to Odisha/India but with a modern, highly attractive aesthetic to captivate viewers immediately.
 5. If it's a devotional song, depict the divine elements beautifully and respectfully without making it look like a cheap cartoon. Use surreal, majestic, and glowing aesthetics.
-    `.trim();
+    \`.trim();
 
     let englishImagePrompt = "A breathtaking, ultra-HD cinematic poster of Indian spirituality, golden hour lighting, highly detailed traditional Indian aesthetic, glowing particles, 8k resolution, masterpiece.";
     
@@ -60,8 +61,8 @@ Requirements:
     
     try {
       const seed = Math.floor(Math.random() * 9999999);
-      // Generate HD landscape poster (1920x1080) using the 'flux' model for incredible quality
-      const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1920&height=1080&nologo=true&seed=${seed}&model=flux`;
+      // Generate HD landscape poster using the 'flux' model for incredible quality
+      const pollUrl = \`https://image.pollinations.ai/prompt/\${encodeURIComponent(englishImagePrompt)}?width=1920&height=1080&nologo=true&seed=\${seed}&model=flux\`;
       
       const imgRes = await fetch(pollUrl);
       if (!imgRes.ok) throw new Error('Failed to fetch from free image generation API');
@@ -69,20 +70,35 @@ Requirements:
       mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
     } catch (genError: any) {
       console.error('Image generation fallback error:', genError);
-      return NextResponse.json({ error: `AI Image API Error: ${genError.message}` }, { status: 500 });
+      return NextResponse.json({ error: \`AI Image API Error: \${genError.message}\` }, { status: 500 });
     }
 
-    const buffer = Buffer.from(imageBuffer);
+    let finalBuffer = Buffer.from(imageBuffer);
+    
+    // Step 3: Automatically crop out the Pollinations watermark at the bottom using sharp
+    try {
+      const metadata = await sharp(finalBuffer).metadata();
+      if (metadata.width && metadata.height) {
+        // Crop the bottom 45 pixels to safely remove the watermark
+        const cropHeight = Math.max(1, metadata.height - 45);
+        finalBuffer = await sharp(finalBuffer)
+          .extract({ width: metadata.width, height: cropHeight, left: 0, top: 0 })
+          .toBuffer();
+      }
+    } catch (cropError) {
+      console.error('Failed to crop watermark, proceeding with original:', cropError);
+    }
+
     const ext = mimeType.includes('png') ? 'png' : 'jpg';
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const fileName = \`\${Date.now()}-\${Math.random().toString(36).slice(2)}.\${ext}\`;
 
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
       .from('song-artwork')
-      .upload(fileName, buffer, { contentType: mimeType, upsert: false });
+      .upload(fileName, finalBuffer, { contentType: mimeType, upsert: false });
 
     if (uploadError) {
       console.error('Supabase upload error:', uploadError);
-      return NextResponse.json({ error: `Supabase Storage Upload Error: ${uploadError.message}` }, { status: 500 });
+      return NextResponse.json({ error: \`Supabase Storage Upload Error: \${uploadError.message}\` }, { status: 500 });
     }
 
     const { data: publicData } = supabaseAdmin.storage
@@ -92,6 +108,6 @@ Requirements:
     return NextResponse.json({ url: publicData.publicUrl });
   } catch (err: any) {
     console.error('Unexpected artwork generation error:', err);
-    return NextResponse.json({ error: `Internal server error: ${err.message}` }, { status: 500 });
+    return NextResponse.json({ error: \`Internal server error: \${err.message}\` }, { status: 500 });
   }
 }
