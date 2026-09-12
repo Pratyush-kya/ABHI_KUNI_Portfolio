@@ -30,13 +30,13 @@ export async function POST(req: NextRequest) {
     const genAI = new GoogleGenerativeAI(geminiApiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
     
-    const llmPrompt = \`
+    const llmPrompt = `
 You are an expert AI image prompt engineer creating stunning, high-definition (HD) album cover art/poster designs for Odia devotional or folk songs.
 I am providing you with the title and lyrics of a song.
 Read the Odia text, understand its core spiritual, cultural, or emotional meaning, and write a highly descriptive, visually breathtaking prompt in ENGLISH.
 
-Odia Title: "\${title}"
-Odia Lyrics: "\${lyrics ? lyrics.slice(0, 500) : ''}..."
+Odia Title: "${title}"
+Odia Lyrics: "${lyrics ? lyrics.slice(0, 500) : ''}..."
 
 Write ONLY the english image generation prompt. Do not add any introductory text.
 Requirements:
@@ -45,7 +45,7 @@ Requirements:
 3. Include dynamic lighting, vibrant colors, cinematic composition.
 4. Culturally accurate to Odisha/India but with a modern, highly attractive aesthetic to captivate viewers immediately.
 5. If it's a devotional song, depict the divine elements beautifully and respectfully without making it look like a cheap cartoon. Use surreal, majestic, and glowing aesthetics.
-    \`.trim();
+    `.trim();
 
     let englishImagePrompt = "A breathtaking, ultra-HD cinematic poster of Indian spirituality, golden hour lighting, highly detailed traditional Indian aesthetic, glowing particles, 8k resolution, masterpiece.";
     
@@ -66,7 +66,7 @@ Requirements:
       const hfRes = await fetch('https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell', {
         method: 'POST',
         headers: {
-          'Authorization': \`Bearer \${hfApiKey}\`,
+          'Authorization': `Bearer ${hfApiKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -80,17 +80,17 @@ Requirements:
       
       if (!hfRes.ok) {
         const errText = await hfRes.text();
-        throw new Error(\`Hugging Face API failed: \${hfRes.status} \${errText}\`);
+        throw new Error(`Hugging Face API failed: ${hfRes.status} ${errText}`);
       }
       
       imageBuffer = await hfRes.arrayBuffer();
     } catch (genError: any) {
       console.error('Image generation error:', genError);
-      return NextResponse.json({ error: \`AI Image API Error: \${genError.message}\` }, { status: 500 });
+      return NextResponse.json({ error: `AI Image API Error: ${genError.message}` }, { status: 500 });
     }
 
     const finalBuffer = Buffer.from(imageBuffer);
-    const fileName = \`\${Date.now()}-\${Math.random().toString(36).slice(2)}.jpg\`;
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
 
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
       .from('song-artwork')
@@ -98,7 +98,7 @@ Requirements:
 
     if (uploadError) {
       console.error('Supabase upload error:', uploadError);
-      return NextResponse.json({ error: \`Supabase Storage Upload Error: \${uploadError.message}\` }, { status: 500 });
+      return NextResponse.json({ error: `Supabase Storage Upload Error: ${uploadError.message}` }, { status: 500 });
     }
 
     const { data: publicData } = supabaseAdmin.storage
@@ -108,6 +108,6 @@ Requirements:
     return NextResponse.json({ url: publicData.publicUrl });
   } catch (err: any) {
     console.error('Unexpected artwork generation error:', err);
-    return NextResponse.json({ error: \`Internal server error: \${err.message}\` }, { status: 500 });
+    return NextResponse.json({ error: `Internal server error: ${err.message}` }, { status: 500 });
   }
 }
