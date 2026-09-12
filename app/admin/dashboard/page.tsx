@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateSlug } from '@/lib/utils';
 import type { Song } from '@/types/song';
@@ -64,6 +65,7 @@ export default async function AdminDashboard({
       redirect(`/admin/dashboard?error=${encodeURIComponent(error.message)}`);
     }
 
+    revalidatePath('/', 'layout');
     redirect('/admin/dashboard');
   }
 
@@ -73,6 +75,7 @@ export default async function AdminDashboard({
     const id = formData.get('id') as string;
     const { error } = await supabaseAdmin.from('songs').delete().eq('id', id);
     if (error) console.error('Delete error:', error.message);
+    revalidatePath('/', 'layout');
     redirect('/admin/dashboard');
   }
 
