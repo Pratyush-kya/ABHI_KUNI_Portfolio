@@ -10,6 +10,7 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
   const [coverUrl, setCoverUrl] = useState('');
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [artError, setArtError] = useState<string | null>(null);
 
@@ -19,11 +20,21 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const interval = setInterval(() => {
+      setCooldown((c) => (c <= 1 ? 0 : c - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [cooldown]);
+
   async function generateArtwork() {
     if (!title.trim()) {
       alert('Please enter a song title first.');
       return;
     }
+
+    if (cooldown > 0) return;
 
     setGenerating(true);
     setArtError(null);
@@ -43,6 +54,8 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
 
       if (data.url) {
         setCoverUrl(data.url);
+        // Set a 15-second cooldown to respect free AI rate limits
+        setCooldown(15);
         // Clear file input if AI artwork is generated
         setFilePreview(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -73,7 +86,7 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
     }
   }
 
-  const isButtonDisabled = !mounted ? true : generating || !title.trim();
+  const isButtonDisabled = !mounted ? true : generating || !title.trim() || cooldown > 0;
   const currentPreview = filePreview || coverUrl;
 
   return (
@@ -159,7 +172,13 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
                 ) : (
                   <Sparkles className="w-3.5 h-3.5" />
                 )}
-                {generating ? 'Generating AI Art…' : coverUrl ? 'Regenerate AI Art' : 'Generate with AI'}
+                {generating
+                  ? 'Generating AI Art…'
+                  : cooldown > 0
+                  ? `Wait ${cooldown}s to regenerate`
+                  : coverUrl
+                  ? 'Regenerate AI Art'
+                  : 'Generate with AI'}
               </button>
             </div>
           </div>
@@ -224,7 +243,13 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-accent-dark text-xs font-ui font-medium border border-zinc-700 cursor-pointer transition-colors disabled:opacity-40"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Generate with AI</span>
+                  <span>
+                    {generating
+                      ? 'Generating…'
+                      : cooldown > 0
+                      ? `Wait ${cooldown}s`
+                      : 'Generate with AI'}
+                  </span>
                 </button>
               </div>
               <p className="mt-3 text-[11px] text-zinc-500 font-ui">

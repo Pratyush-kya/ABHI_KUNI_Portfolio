@@ -55,21 +55,48 @@ Requirements:
       }
     }
 
-    // Step 2: Pass the translated English prompt to Pollinations using free turbo model
-    let imageBuffer: ArrayBuffer;
+    // Step 2: Pass the translated English prompt to Pollinations
+    let imageBuffer: ArrayBuffer | null = null;
     let mimeType = 'image/jpeg';
     
-    try {
-      const seed = Math.floor(Math.random() * 9999999);
-      const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=turbo`;
-      
-      const imgRes = await fetch(pollUrl);
-      if (!imgRes.ok) throw new Error(`Image API returned status ${imgRes.status}`);
-      imageBuffer = await imgRes.arrayBuffer();
-      mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
-    } catch (genError: any) {
-      console.error('Image generation fallback error:', genError);
-      return NextResponse.json({ error: `AI Image API Error: ${genError.message}` }, { status: 500 });
+    const seed = Math.floor(Math.random() * 9999999);
+    const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=turbo`;
+    
+    // Attempt with retry if 402 rate-limit cooldown is active
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const imgRes = await fetch(pollUrl);
+        if (imgRes.status === 200) {
+          imageBuffer = await imgRes.arrayBuffer();
+          mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
+          break;
+        } else if (imgRes.status === 402) {
+          if (attempt === 1) {
+            // Wait 10 seconds for Pollinations cooldown and retry once
+            await new Promise((resolve) => setTimeout(resolve, 10000));
+            continue;
+          } else {
+            return NextResponse.json({
+              error: 'AI image generator is on cooldown. Please wait 15 seconds before regenerating, or upload your own image.'
+            }, { status: 429 });
+          }
+        } else {
+          throw new Error(`Image API returned status ${imgRes.status}`);
+        }
+      } catch (genError: any) {
+        if (attempt === 2) {
+          console.error('Image generation fallback error:', genError);
+          return NextResponse.json({
+            error: genError.message || 'AI service temporarily unavailable. Please try again in 15 seconds or upload a photo.'
+          }, { status: 500 });
+        }
+      }
+    }
+
+    if (!imageBuffer) {
+      return NextResponse.json({
+        error: 'AI image generator is on cooldown. Please wait 15 seconds before regenerating, or upload your own image.'
+      }, { status: 429 });
     }
 
     let finalBuffer = Buffer.from(imageBuffer);
