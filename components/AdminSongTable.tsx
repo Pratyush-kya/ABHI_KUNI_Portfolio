@@ -1,8 +1,29 @@
 'use client';
+import { useFormStatus } from 'react-dom';
 import type { Song } from '@/types/song';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
-import { Trash2, ExternalLink } from 'lucide-react';
+import { Trash2, ExternalLink, Loader2 } from 'lucide-react';
+
+function DeleteButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      onClick={(e) => {
+        if (!confirm('Are you sure you want to delete this song?')) {
+          e.preventDefault();
+        }
+      }}
+      className="p-1.5 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors cursor-pointer"
+      title="Delete song"
+    >
+      {pending ? <Loader2 className="w-4 h-4 animate-spin text-red-400" /> : <Trash2 className="w-4 h-4" />}
+    </button>
+  );
+}
 
 export default function AdminSongTable({
   songs,
@@ -14,7 +35,7 @@ export default function AdminSongTable({
   if (songs.length === 0) {
     return (
       <div className="text-center py-12 text-zinc-400 font-odia">
-        ଏଖନ ପର୍ଯ୍ୟନ୍ତ କୌଣସି ଗୀତ ନାହିଁ
+        ଏପର୍ଯ୍ୟନ୍ତ କୌଣସି ଗୀତ ନାହିଁ
       </div>
     );
   }
@@ -56,14 +77,7 @@ export default function AdminSongTable({
                   </Link>
                   <form action={deleteSong}>
                     <input type="hidden" name="id" value={song.id} />
-                    <button
-                      type="submit"
-                      onClick={(e) => { if (!confirm('Delete this song?')) e.preventDefault(); }}
-                      className="p-1.5 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
-                      title="Delete song"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <DeleteButton />
                   </form>
                 </div>
               </td>

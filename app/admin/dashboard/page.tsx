@@ -26,11 +26,11 @@ async function getSongs(): Promise<Song[]> {
 export default async function AdminDashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   await guardAdmin();
   const songs = await getSongs();
-  const { error: uploadError } = await searchParams;
+  const { error: uploadError, success: successMsg } = await searchParams;
 
   // Check env vars once on page load so admin knows immediately
   const missingEnv: string[] = [];
@@ -44,10 +44,34 @@ export default async function AdminDashboard({
     const title = (formData.get('title') as string)?.trim();
     const lyrics = (formData.get('lyrics') as string)?.trim();
     const category = (formData.get('category') as string)?.trim() || 'ଗୀତ';
-    const cover_image_url = (formData.get('cover_image_url') as string)?.trim() || null;
+    let cover_image_url = (formData.get('cover_image_url') as string)?.trim() || null;
+    const coverFile = formData.get('cover_file') as File | null;
 
     if (!title || !lyrics) {
       redirect('/admin/dashboard?error=Title+and+lyrics+are+required');
+    }
+
+    // Handle local file upload if user chose an image from device
+    if (coverFile && coverFile.size > 0) {
+      try {
+        const ext = coverFile.name.split('.').pop() || 'jpg';
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const fileBuffer = Buffer.from(await coverFile.arrayBuffer());
+        const { data: uploadData, error: uploadErr } = await supabaseAdmin.storage
+          .from('song-artwork')
+          .upload(fileName, fileBuffer, { contentType: coverFile.type || 'image/jpeg', upsert: false });
+        
+        if (uploadErr) {
+          console.error('File upload error:', uploadErr.message);
+        } else if (uploadData) {
+          const { data: publicData } = supabaseAdmin.storage
+            .from('song-artwork')
+            .getPublicUrl(uploadData.path);
+          cover_image_url = publicData.publicUrl;
+        }
+      } catch (err: any) {
+        console.error('Failed to process uploaded file:', err);
+      }
     }
 
     const slug = generateSlug(title);
@@ -66,7 +90,7 @@ export default async function AdminDashboard({
     }
 
     revalidatePath('/', 'layout');
-    redirect('/admin/dashboard');
+    redirect('/admin/dashboard?success=Song+uploaded+successfully');
   }
 
   async function deleteSong(formData: FormData) {
@@ -74,9 +98,12 @@ export default async function AdminDashboard({
     await guardAdmin();
     const id = formData.get('id') as string;
     const { error } = await supabaseAdmin.from('songs').delete().eq('id', id);
-    if (error) console.error('Delete error:', error.message);
+    if (error) {
+      console.error('Delete error:', error.message);
+      redirect(`/admin/dashboard?error=${encodeURIComponent(error.message)}`);
+    }
     revalidatePath('/', 'layout');
-    redirect('/admin/dashboard');
+    redirect('/admin/dashboard?success=Song+deleted+successfully');
   }
 
   async function logout() {
@@ -114,8 +141,15 @@ export default async function AdminDashboard({
       {/* Upload error banner */}
       {uploadError && (
         <div className="mb-6 p-4 rounded-xl border border-red-500/40 bg-red-950/30 text-red-400 text-sm font-ui">
-          <p className="font-semibold">Upload failed:</p>
+          <p className="font-semibold">Operation failed:</p>
           <p className="text-xs mt-0.5">{decodeURIComponent(uploadError)}</p>
+        </div>
+      )}
+
+      {/* Success banner */}
+      {successMsg && (
+        <div className="mb-6 p-4 rounded-xl border border-emerald-500/40 bg-emerald-950/30 text-emerald-400 text-sm font-ui flex items-center justify-between">
+          <p className="font-medium">✓ {decodeURIComponent(successMsg)}</p>
         </div>
       )}
 
