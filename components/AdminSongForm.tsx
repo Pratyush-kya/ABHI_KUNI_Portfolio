@@ -65,14 +65,17 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 429) {
+          setCooldown(25);
+        }
         throw new Error(data.error || 'Failed to generate artwork');
       }
 
       if (data.url) {
         setCoverUrl(data.url);
         if (data.prompt) setGeneratedConcept(data.prompt);
-        // 15-second cooldown to respect free AI rate limits
-        setCooldown(15);
+        // 25-second cooldown to respect free AI rate limits
+        setCooldown(25);
         // Clear file input if AI artwork is generated
         setFilePreview(null);
         if (fileInputRef.current) fileInputRef.current.value = '';

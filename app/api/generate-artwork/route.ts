@@ -103,12 +103,12 @@ Write ONLY the final English image generation prompt. No introductory or explana
           break;
         } else if (imgRes.status === 402) {
           if (attempt === 1) {
-            // Wait 10 seconds for Pollinations cooldown and retry once
-            await new Promise((resolve) => setTimeout(resolve, 10000));
+            // Wait 15 seconds for Pollinations cooldown and retry once
+            await new Promise((resolve) => setTimeout(resolve, 15000));
             continue;
           } else {
             return NextResponse.json({
-              error: 'AI image generator is on cooldown. Please wait 15 seconds before regenerating, or upload your own image.'
+              error: 'AI image generator is cooling down. Please wait 20-25 seconds before regenerating, or upload your own image.'
             }, { status: 429 });
           }
         } else {
@@ -118,7 +118,7 @@ Write ONLY the final English image generation prompt. No introductory or explana
         if (attempt === 2) {
           console.error('Image generation fallback error:', genError);
           return NextResponse.json({
-            error: genError.message || 'AI service temporarily unavailable. Please try again in 15 seconds or upload a photo.'
+            error: genError.message || 'AI service temporarily unavailable. Please try again in 25 seconds or upload a photo.'
           }, { status: 500 });
         }
       }
@@ -126,7 +126,7 @@ Write ONLY the final English image generation prompt. No introductory or explana
 
     if (!imageBuffer) {
       return NextResponse.json({
-        error: 'AI image generator is on cooldown. Please wait 15 seconds before regenerating, or upload your own image.'
+        error: 'AI image generator is cooling down. Please wait 20-25 seconds before regenerating, or upload your own image.'
       }, { status: 429 });
     }
 
