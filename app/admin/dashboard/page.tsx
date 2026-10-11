@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { generateSlug } from '@/lib/utils';
 import type { Song } from '@/types/song';
 import AdminSongTable from '@/components/AdminSongTable';
-import AdminSongForm from '@/components/AdminSongForm';
+import AdminSongManager from '@/components/AdminSongManager';
 
 async function guardAdmin() {
   const cookieStore = await cookies();
@@ -153,7 +153,7 @@ export default async function AdminDashboard({
         </div>
       )}
 
-      <AdminSongForm addSong={addSong} />
+      <AdminSongManager addSong={addSong} />
 
       <div className="mt-12">
         <h2 className="font-ui font-semibold text-lg text-zinc-200 mb-4">

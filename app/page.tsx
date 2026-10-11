@@ -1,62 +1,60 @@
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import SongCard from '@/components/SongCard';
+import SongCatalog from '@/components/SongCatalog';
+import ContactSection from '@/components/ContactSection';
 import type { Song } from '@/types/song';
+import { Sparkles, Music2 } from 'lucide-react';
 
-async function getLatestSongs(): Promise<Song[]> {
+export const revalidate = 60; // ISR cache revalidation every 60s for ultra-fast performance
+
+async function getAllSongs(): Promise<Song[]> {
   const { data } = await supabase
     .from('songs')
     .select('*')
-    .order('created_at', { ascending: false })
-    .limit(6);
+    .order('created_at', { ascending: false });
   return data ?? [];
 }
 
 export default async function HomePage() {
-  const songs = await getLatestSongs();
+  const songs = await getAllSongs();
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12">
-      {/* Hero */}
-      <section className="text-center mb-16">
-        <p className="text-accent-dark font-semibold text-sm uppercase tracking-widest mb-3 font-ui">
-          Abinash Rath · ଅବିନାଶ ରଥ
-        </p>
-        <h1 className="font-odia font-bold text-5xl sm:text-6xl text-zinc-50 mb-4 leading-tight">
+    <div className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
+      {/* Hero Section with Ambient Warm Aura */}
+      <section className="relative text-center mb-12 sm:mb-16 pt-4 pb-8 overflow-hidden rounded-3xl">
+        {/* Warm Ambient Glow behind hero title */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -z-10 w-96 h-96 rounded-full bg-amber-500/15 blur-[120px] pointer-events-none" />
+
+        <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-medium text-xs uppercase tracking-widest mb-4 font-ui shadow-sm">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Abinash Rath · ଅବିନାଶ ରଥ</span>
+        </div>
+
+        <h1 className="font-odia font-bold text-4xl sm:text-6xl text-zinc-50 mb-4 leading-tight tracking-tight drop-shadow-sm">
           ଓଡ଼ିଆ ଗୀତ ସଂଗ୍ରହ
         </h1>
-        <p className="text-zinc-400 text-lg max-w-xl mx-auto font-ui">
-          A heartfelt collection of Odia song lyrics by Abinash Rath.
+
+        <p className="text-zinc-300 text-base sm:text-lg max-w-xl mx-auto font-ui leading-relaxed">
+          A soulful collection of modern and spiritual Odia lyrics, poems, and musical compositions.
         </p>
-        <Link
-          href="/browse"
-          className="inline-block mt-8 px-6 py-3 rounded-xl bg-accent-dark text-zinc-900 font-semibold font-ui hover:opacity-90 transition-opacity duration-200 cursor-pointer"
-        >
-          Browse All Songs →
-        </Link>
       </section>
 
-      {/* Latest Songs */}
-      {songs.length > 0 ? (
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-ui font-semibold text-2xl text-zinc-50">Latest Songs</h2>
-            <Link href="/browse" className="text-sm text-accent-dark hover:underline font-ui cursor-pointer">
-              View all →
-            </Link>
+      {/* Multi-Functional Timeline Catalog (Low Latency Instant Search & Filter) */}
+      <section>
+        <div className="flex items-center justify-between mb-4 px-1">
+          <div className="flex items-center gap-2">
+            <Music2 className="w-5 h-5 text-amber-500" />
+            <h2 className="font-ui font-semibold text-xl sm:text-2xl text-zinc-50">
+              Song Library & Archive
+            </h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {songs.map((song) => (
-              <SongCard key={song.id} song={song} />
-            ))}
-          </div>
-        </section>
-      ) : (
-        <div className="text-center py-24 text-zinc-600">
-          <p className="font-odia text-2xl mb-2">ଏଖନ ପର୍ଯ୍ୟନ୍ତ କୌଣସି ଗୀତ ନାହିଁ</p>
-          <p className="font-ui text-sm">No songs yet — add your first from the admin panel.</p>
         </div>
-      )}
+
+        <SongCatalog songs={songs} />
+      </section>
+
+      {/* Contact & Collaboration Hub */}
+      <ContactSection />
     </div>
   );
 }

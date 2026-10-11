@@ -19,6 +19,14 @@ export function formatDate(isoString: string): string {
   });
 }
 
+export function getSongYear(isoString: string): string {
+  return new Date(isoString).getFullYear().toString();
+}
+
+export function getSongMonth(isoString: string): string {
+  return new Date(isoString).toLocaleDateString('en-US', { month: 'short' });
+}
+
 export function getLyricsExcerpt(lyrics: string, maxLength = 80): string {
   const firstLine = lyrics.split('\n').find((l) => l.trim().length > 0) ?? '';
   return firstLine.length > maxLength ? firstLine.slice(0, maxLength) + '…' : firstLine;
