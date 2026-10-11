@@ -212,10 +212,13 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
                 <button
                   key={st.id}
                   type="button"
-                  onClick={() => setArtStyle(st.id)}
-                  className={`py-2 px-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                  onClick={() => {
+                    setArtStyle(st.id);
+                    setArtError(null);
+                  }}
+                  className={`py-2 px-2.5 rounded-xl text-left border transition-all cursor-pointer relative ${
                     artStyle === st.id
-                      ? 'bg-zinc-800 border-accent-dark shadow-sm'
+                      ? 'bg-zinc-800 border-accent-dark ring-1 ring-accent-dark shadow-sm'
                       : 'border-zinc-800 bg-zinc-850/60 hover:border-zinc-700 text-zinc-400'
                   }`}
                 >
