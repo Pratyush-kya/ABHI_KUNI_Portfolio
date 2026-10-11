@@ -50,15 +50,24 @@ export async function POST(req: NextRequest) {
         break;
     }
 
-    // Step 1: Use Gemini to deeply understand the Odia lyrics and generate a simple, meaningful visual concept
-    const apiKey = process.env.GEMINI_API_KEY;
-    let englishImagePrompt = "A serene earthen oil lamp glowing peacefully on traditional stone at twilight, warm golden light, minimalist cinematic composition, clean and elegant spiritual aesthetic.";
+    // Step 1: Default style-specific prompts if Gemini is unreachable or on cooldown
+    // This guarantees that each of the 4 styles generates a completely distinct, theme-appropriate image!
+    const styleDefaults: Record<string, string> = {
+      pattachitra: `Authentic Odisha Pattachitra folk art illustration of ${customHint || 'traditional Odishan cultural celebration and sacred lotus motifs'}, crisp hand-painted black outlines, ornate temple border, natural earthy mineral pigments of terracotta, deep indigo, and turmeric yellow.`,
+      nature: `Cinematic landscape photography of rural Odisha countryside, ${customHint || 'serene riverbank with a wooden boat, tranquil lotus pond, golden twilight reflections'}, lush greenery, peaceful rural dawn, minimalist and contemplative composition.`,
+      devotional: `Majestic ancient Odisha Kalinga-style stone temple silhouette at spiritual twilight, ${customHint || 'warm glowing terracotta clay diya lamp on wet stone steps'}, sacred atmosphere, serene golden illumination, deep peaceful devotion.`,
+      poetic: `Minimalist cinematic album cover art, ${customHint || 'a single symbolic physical subject with soft bokeh and shallow depth of field'}, warm emotional golden hour lighting, clean and elegant visual metaphor, heartfelt poetic longing.`
+    };
 
+    let englishImagePrompt = styleDefaults[style] || styleDefaults.poetic;
+
+    const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
       try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        // Use the current active Gemini 3.8 Flash model
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.8-flash' });
+        // Try active models in sequence for maximum resilience against 503/404 errors
+        let generatedText = '';
+        const candidateModels = ['gemini-flash-latest', 'gemini-3.8-flash'];
         
         const llmPrompt = `
 You are an expert art director creating an album cover art design for an Odia song.
@@ -80,13 +89,25 @@ Instructions:
 Write ONLY the final English image generation prompt. No introductory or explanatory text.
         `.trim();
 
-        const result = await model.generateContent(llmPrompt);
-        const generatedText = result.response.text().trim();
-        if (generatedText && generatedText.length > 20) {
+        for (const modelName of candidateModels) {
+          try {
+            const model = genAI.getGenerativeModel({ model: modelName });
+            const result = await model.generateContent(llmPrompt);
+            const text = result.response.text().trim();
+            if (text && text.length > 20) {
+              generatedText = text;
+              break;
+            }
+          } catch (modelErr) {
+            console.warn(`Gemini model ${modelName} unavailable, trying next...`);
+          }
+        }
+
+        if (generatedText) {
           englishImagePrompt = generatedText;
         }
       } catch (llmError) {
-        console.error('Gemini text translation failed, using fallback prompt:', llmError);
+        console.error('Gemini text translation failed, using style fallback prompt:', llmError);
       }
     }
 
