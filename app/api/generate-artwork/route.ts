@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import sharp from 'sharp';
@@ -7,7 +8,19 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const { title, lyrics } = await req.json();
+    // Security Guard: Only authenticated admins may invoke AI artwork generation
+    const cookieStore = await cookies();
+    if (cookieStore.get('admin_session')?.value !== 'authenticated') {
+      return NextResponse.json({ error: 'Unauthorized: Admin authentication required' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const title = typeof body.title === 'string' ? body.title.trim().slice(0, 150) : '';
+    const lyrics = typeof body.lyrics === 'string' ? body.lyrics.trim().slice(0, 4000) : '';
+    const style = typeof body.style === 'string' ? body.style.trim() : 'poetic';
+    const customHint = typeof body.customHint === 'string' ? body.customHint.trim().slice(0, 200) : '';
+    const previousUrl = typeof body.previousUrl === 'string' ? body.previousUrl.trim() : '';
+
     if (!title) {
       return NextResponse.json({ error: 'Song title is required for artwork generation' }, { status: 400 });
     }
@@ -19,9 +32,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Supabase Service Role Key is not configured for storage upload' }, { status: 500 });
     }
 
-    // Step 1: Use Gemini Text model to understand the Odia lyrics and generate a visual English prompt
+    // Determine style-specific artistic guidance
+    let styleGuidance = '';
+    switch (style) {
+      case 'pattachitra':
+        styleGuidance = 'Aesthetic Style: Authentic Odisha Pattachitra folk art illustration. Elegant hand-painted clean lines, traditional temple border motifs, natural earthy mineral palette (terracotta, indigo, turmeric yellow, conch shell white). Cultural dignity without clutter.';
+        break;
+      case 'nature':
+        styleGuidance = 'Aesthetic Style: Peaceful rural Odisha nature photography. Cinematic golden hour or quiet twilight, serene river ghat or village path, lush green landscape, peaceful water reflections, clean and contemplative.';
+        break;
+      case 'devotional':
+        styleGuidance = 'Aesthetic Style: Sacred Odisha temple twilight. Majestic stone temple silhouette, warm golden clay diya oil lamp glow, quiet sanctum atmosphere, spiritual peace and reverent simplicity.';
+        break;
+      case 'poetic':
+      default:
+        styleGuidance = 'Aesthetic Style: Clean poetic album cover with a single compelling symbolic focal point. Warm cinematic lighting, elegant minimalist composition, soft blurred background, emotional depth, visually understandable at a single glance.';
+        break;
+    }
+
+    // Step 1: Use Gemini to deeply understand the Odia lyrics and generate a simple, meaningful visual concept
     const apiKey = process.env.GEMINI_API_KEY;
-    let englishImagePrompt = "A breathtaking, ultra-HD cinematic poster of Indian spirituality, golden hour lighting, highly detailed traditional Indian aesthetic, glowing particles, 8k resolution, masterpiece.";
+    let englishImagePrompt = "A serene earthen oil lamp glowing peacefully on traditional stone at twilight, warm golden light, minimalist cinematic composition, clean and elegant spiritual aesthetic.";
 
     if (apiKey) {
       try {
@@ -29,20 +60,23 @@ export async function POST(req: NextRequest) {
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         
         const llmPrompt = `
-You are an expert AI image prompt engineer creating stunning, high-definition (HD) album cover art/poster designs for Odia devotional or folk songs.
-I am providing you with the title and lyrics of a song.
-Read the Odia text, understand its core spiritual, cultural, or emotional meaning, and write a highly descriptive, visually breathtaking prompt in ENGLISH.
+You are an expert art director creating an album cover art design for an Odia song.
+Read the song title and lyrics carefully. Understand its core emotional soul, philosophical meaning, or story.
 
 Odia Title: "${title}"
-Odia Lyrics: "${lyrics ? lyrics.slice(0, 500) : ''}..."
+Odia Lyrics Excerpt:
+"${lyrics ? lyrics.slice(0, 600) : ''}..."
+${customHint ? `Additional Creative Direction from Artist: "${customHint}"` : ''}
 
-Write ONLY the english image generation prompt. Do not add any introductory text.
-Requirements:
-1. Make it incredibly beautiful, photorealistic, HD poster quality (8k resolution style).
-2. Deeply link the visual elements directly to the specific meaning of the title and lyrics.
-3. Include dynamic lighting, vibrant colors, cinematic composition.
-4. Culturally accurate to Odisha/India but with a modern, highly attractive aesthetic to captivate viewers immediately.
-5. If it's a devotional song, depict the divine elements beautifully and respectfully without making it look like a cheap cartoon. Use surreal, majestic, and glowing aesthetics.
+${styleGuidance}
+
+Instructions:
+1. Identify the SINGLE most meaningful physical visual metaphor or subject that tells the story of this song (for example: a lone earthen lamp in the breeze, a weathered boat resting on a calm riverbank, gentle working hands, footprints disappearing in coastal sand, sacred temple stairs at dawn).
+2. Keep the scene SIMPLE, FOCUSED, and IMMEDIATELY UNDERSTANDABLE. Do not clutter the image with too many elements.
+3. Describe the scene in 2-3 concise English sentences specifying the central subject, lighting, mood, and clean composition.
+4. Hard Negative Constraints: NO text, NO letters, NO words, NO collage, NO chaotic crowd, NO distorted figures, NO cluttered background, NO watermarks.
+
+Write ONLY the final English image generation prompt. No introductory or explanatory text.
         `.trim();
 
         const result = await model.generateContent(llmPrompt);
@@ -55,10 +89,8 @@ Requirements:
       }
     }
 
-    // Step 2: Pass the translated English prompt to Pollinations
+    // Step 2: Pass the refined prompt to Pollinations Turbo
     let imageBuffer: ArrayBuffer | null = null;
-    let mimeType = 'image/jpeg';
-    
     const seed = Math.floor(Math.random() * 9999999);
     const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=turbo`;
     
@@ -68,7 +100,6 @@ Requirements:
         const imgRes = await fetch(pollUrl);
         if (imgRes.status === 200) {
           imageBuffer = await imgRes.arrayBuffer();
-          mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
           break;
         } else if (imgRes.status === 402) {
           if (attempt === 1) {
@@ -101,26 +132,41 @@ Requirements:
 
     let finalBuffer = Buffer.from(imageBuffer);
     
-    // Step 3: Automatically crop out the Pollinations watermark at the bottom using sharp
+    // Step 3: Crop Pollinations watermark at the bottom and convert to WebP using sharp
     try {
       const metadata = await sharp(finalBuffer).metadata();
       if (metadata.width && metadata.height) {
-        // Crop the bottom 65 pixels to completely ensure no watermark remains
         const cropHeight = Math.max(1, metadata.height - 65);
         finalBuffer = await sharp(finalBuffer)
           .extract({ width: metadata.width, height: cropHeight, left: 0, top: 0 })
+          .webp({ quality: 85, effort: 4 })
           .toBuffer();
       }
     } catch (cropError) {
-      console.error('Failed to crop watermark, proceeding with original:', cropError);
+      console.error('Sharp processing error, proceeding with original:', cropError);
     }
 
-    const ext = mimeType.includes('png') ? 'png' : 'jpg';
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    // Step 4: Storage Hygiene - Delete previous orphaned artwork from Supabase Storage if regenerating
+    if (previousUrl && previousUrl.includes('/song-artwork/')) {
+      try {
+        const urlParts = previousUrl.split('/song-artwork/');
+        if (urlParts.length > 1) {
+          const oldFileName = urlParts[1].split('?')[0];
+          if (oldFileName) {
+            await supabaseAdmin.storage.from('song-artwork').remove([oldFileName]);
+          }
+        }
+      } catch (cleanupErr) {
+        console.error('Failed to cleanup previous artwork:', cleanupErr);
+      }
+    }
+
+    // Step 5: Upload optimized WebP to Supabase Storage
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.webp`;
 
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
       .from('song-artwork')
-      .upload(fileName, finalBuffer, { contentType: mimeType, upsert: false });
+      .upload(fileName, finalBuffer, { contentType: 'image/webp', upsert: false });
 
     if (uploadError) {
       console.error('Supabase upload error:', uploadError);
@@ -131,7 +177,10 @@ Requirements:
       .from('song-artwork')
       .getPublicUrl(uploadData.path);
 
-    return NextResponse.json({ url: publicData.publicUrl });
+    return NextResponse.json({
+      url: publicData.publicUrl,
+      prompt: englishImagePrompt,
+    });
   } catch (err: any) {
     console.error('Unexpected artwork generation error:', err);
     return NextResponse.json({ error: `Internal server error: ${err.message}` }, { status: 500 });

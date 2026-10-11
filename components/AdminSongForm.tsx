@@ -1,13 +1,23 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Loader2, RefreshCw, AlertCircle, Upload, X } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle, Upload, X } from 'lucide-react';
+
+const ART_STYLES = [
+  { id: 'poetic', label: '🌿 ଭାବପୂର୍ଣ୍ଣ (Poetic & Simple)', desc: 'Clean, emotional single subject' },
+  { id: 'devotional', label: '🛕 ମନ୍ଦିର (Temple & Bhakti)', desc: 'Sacred diya glow & temple silhouette' },
+  { id: 'pattachitra', label: '🎨 ପଟ୍ଟଚିତ୍ର (Folk Art)', desc: 'Traditional Odisha folk painting' },
+  { id: 'nature', label: '🌅 ପ୍ରକୃତି (Nature & Village)', desc: 'Rural Odisha landscapes & peaceful dawn' },
+];
 
 export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => Promise<void> }) {
   const [mounted, setMounted] = useState(false);
   const [title, setTitle] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [category, setCategory] = useState('ଗୀତ');
+  const [artStyle, setArtStyle] = useState('poetic');
+  const [customHint, setCustomHint] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
+  const [generatedConcept, setGeneratedConcept] = useState<string | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -43,7 +53,13 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
       const res = await fetch('/api/generate-artwork', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, lyrics }),
+        body: JSON.stringify({
+          title,
+          lyrics,
+          style: artStyle,
+          customHint,
+          previousUrl: coverUrl,
+        }),
       });
 
       const data = await res.json();
@@ -54,7 +70,8 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
 
       if (data.url) {
         setCoverUrl(data.url);
-        // Set a 15-second cooldown to respect free AI rate limits
+        if (data.prompt) setGeneratedConcept(data.prompt);
+        // 15-second cooldown to respect free AI rate limits
         setCooldown(15);
         // Clear file input if AI artwork is generated
         setFilePreview(null);
@@ -73,12 +90,14 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
     if (file) {
       setFilePreview(URL.createObjectURL(file));
       setCoverUrl('');
+      setGeneratedConcept(null);
       setArtError(null);
     }
   }
 
   function handleClearArtwork() {
     setCoverUrl('');
+    setGeneratedConcept(null);
     setFilePreview(null);
     setArtError(null);
     if (fileInputRef.current) {
@@ -153,34 +172,70 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
           />
         </div>
 
-        <div>
+        {/* Artwork Generation Section */}
+        <div className="pt-2">
           <div className="flex items-center justify-between mb-2">
             <label className="block text-sm font-ui font-medium text-zinc-300">
               Cover Artwork <span className="text-zinc-500 font-normal text-xs">(optional)</span>
             </label>
 
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={generateArtwork}
-                disabled={isButtonDisabled}
-                suppressHydrationWarning
-                className="flex items-center gap-1.5 text-xs text-accent-dark hover:underline disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              >
-                {generating ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="w-3.5 h-3.5" />
-                )}
-                {generating
-                  ? 'Generating AI Art…'
-                  : cooldown > 0
-                  ? `Wait ${cooldown}s to regenerate`
-                  : coverUrl
-                  ? 'Regenerate AI Art'
-                  : 'Generate with AI'}
-              </button>
+            <button
+              type="button"
+              onClick={generateArtwork}
+              disabled={isButtonDisabled}
+              suppressHydrationWarning
+              className="flex items-center gap-1.5 text-xs text-accent-dark hover:underline disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              {generating ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5" />
+              )}
+              {generating
+                ? 'Generating AI Art…'
+                : cooldown > 0
+                ? `Wait ${cooldown}s to regenerate`
+                : coverUrl
+                ? 'Regenerate AI Art'
+                : 'Generate with AI'}
+            </button>
+          </div>
+
+          {/* Art Style Selector */}
+          <div className="mb-2">
+            <label className="block text-xs font-ui text-zinc-400 mb-1.5">Art Style (ଶୈଳୀ):</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {ART_STYLES.map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => setArtStyle(st.id)}
+                  className={`py-2 px-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                    artStyle === st.id
+                      ? 'bg-zinc-800 border-accent-dark shadow-sm'
+                      : 'border-zinc-800 bg-zinc-850/60 hover:border-zinc-700 text-zinc-400'
+                  }`}
+                >
+                  <div className={`text-xs font-medium font-ui ${artStyle === st.id ? 'text-accent-dark' : 'text-zinc-300'}`}>
+                    {st.label}
+                  </div>
+                  <div className="text-[10px] text-zinc-500 font-ui truncate mt-0.5">
+                    {st.desc}
+                  </div>
+                </button>
+              ))}
             </div>
+          </div>
+
+          {/* Optional Creative Hint */}
+          <div className="mb-3">
+            <input
+              type="text"
+              value={customHint}
+              onChange={(e) => setCustomHint(e.target.value)}
+              placeholder="Optional visual hint (e.g. 'lone clay lamp', 'quiet river sunrise', 'temple twilight')"
+              className="w-full px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-800/60 text-zinc-300 text-xs font-ui placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-accent-dark"
+            />
           </div>
 
           {artError && (
@@ -193,32 +248,41 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
           {generating ? (
             <div className="h-44 rounded-xl border border-zinc-700 bg-zinc-800 flex flex-col items-center justify-center gap-2 text-zinc-400">
               <Loader2 className="w-7 h-7 animate-spin text-accent-dark" />
-              <span className="text-xs font-ui">Creating poster artwork with AI…</span>
+              <span className="text-xs font-ui">Creating simple & meaningful poster artwork…</span>
             </div>
           ) : currentPreview ? (
-            <div className="relative group rounded-xl overflow-hidden border border-zinc-700 bg-zinc-950">
-              <img
-                src={currentPreview}
-                alt="Cover preview"
-                className="w-full h-48 object-cover rounded-xl"
-              />
-              {coverUrl && !filePreview && (
-                <span className="absolute top-2 right-2 flex items-center gap-1 bg-zinc-900/80 backdrop-blur text-accent-dark text-xs font-ui px-2.5 py-1 rounded-full border border-zinc-700">
-                  <Sparkles className="w-3 h-3" /> AI Generated
-                </span>
+            <div className="space-y-2">
+              <div className="relative group rounded-xl overflow-hidden border border-zinc-700 bg-zinc-950">
+                <img
+                  src={currentPreview}
+                  alt="Cover preview"
+                  className="w-full h-48 object-cover rounded-xl"
+                />
+                {coverUrl && !filePreview && (
+                  <span className="absolute top-2 right-2 flex items-center gap-1 bg-zinc-900/80 backdrop-blur text-accent-dark text-xs font-ui px-2.5 py-1 rounded-full border border-zinc-700">
+                    <Sparkles className="w-3 h-3" /> AI Generated
+                  </span>
+                )}
+                {filePreview && (
+                  <span className="absolute top-2 right-2 flex items-center gap-1 bg-zinc-900/80 backdrop-blur text-emerald-400 text-xs font-ui px-2.5 py-1 rounded-full border border-zinc-700">
+                    <Upload className="w-3 h-3" /> Device Upload
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleClearArtwork}
+                  className="absolute top-2 left-2 bg-red-600/90 hover:bg-red-600 text-white text-xs font-ui px-2.5 py-1 rounded-full flex items-center gap-1 transition-colors cursor-pointer shadow-md"
+                >
+                  <X className="w-3 h-3" /> Remove
+                </button>
+              </div>
+
+              {generatedConcept && coverUrl && !filePreview && (
+                <div className="p-2.5 rounded-xl bg-zinc-800/40 border border-zinc-800 text-[11px] font-ui text-zinc-400">
+                  <span className="text-zinc-500 font-medium">Visual Concept: </span>
+                  <span className="italic">{generatedConcept}</span>
+                </div>
               )}
-              {filePreview && (
-                <span className="absolute top-2 right-2 flex items-center gap-1 bg-zinc-900/80 backdrop-blur text-emerald-400 text-xs font-ui px-2.5 py-1 rounded-full border border-zinc-700">
-                  <Upload className="w-3 h-3" /> Device Upload
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={handleClearArtwork}
-                className="absolute top-2 left-2 bg-red-600/90 hover:bg-red-600 text-white text-xs font-ui px-2.5 py-1 rounded-full flex items-center gap-1 transition-colors cursor-pointer shadow-md"
-              >
-                <X className="w-3 h-3" /> Remove
-              </button>
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-zinc-700 bg-zinc-800/40 p-5 text-center">
@@ -253,7 +317,7 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
                 </button>
               </div>
               <p className="mt-3 text-[11px] text-zinc-500 font-ui">
-                You can upload a custom cover from your device, generate one with AI, or publish without artwork.
+                Upload your own photo from device, generate a simple & meaningful AI cover, or publish without artwork.
               </p>
             </div>
           )}
@@ -264,7 +328,7 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
         <button
           type="submit"
           disabled={isSubmitting || generating}
-          className="w-full py-3.5 rounded-xl bg-zinc-50 text-zinc-900 font-ui font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity cursor-pointer flex items-center justify-center gap-2 mt-2"
+          className="w-full py-3.5 rounded-xl bg-zinc-50 text-zinc-900 font-ui font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity cursor-pointer flex items-center justify-center gap-2 mt-4"
         >
           {isSubmitting ? (
             <>
