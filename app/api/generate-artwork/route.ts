@@ -14,12 +14,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: Admin authentication required' }, { status: 401 });
     }
 
+    const startTime = Date.now();
     const body = await req.json();
     const title = typeof body.title === 'string' ? body.title.trim().slice(0, 150) : '';
     const lyrics = typeof body.lyrics === 'string' ? body.lyrics.trim().slice(0, 4000) : '';
     const style = typeof body.style === 'string' ? body.style.trim() : 'poetic';
     const customHint = typeof body.customHint === 'string' ? body.customHint.trim().slice(0, 200) : '';
     const previousUrl = typeof body.previousUrl === 'string' ? body.previousUrl.trim() : '';
+    const isTurbo = body.turbo !== false; // Default to turbo high-speed mode
 
     if (!title) {
       return NextResponse.json({ error: 'Song title is required for artwork generation' }, { status: 400 });
@@ -65,8 +67,6 @@ export async function POST(req: NextRequest) {
     if (apiKey) {
       try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        // Try active models in sequence for maximum resilience against 503/404 errors
-        let generatedText = '';
         const candidateModels = ['gemini-flash-latest', 'gemini-3.8-flash'];
         
         const llmPrompt = `
@@ -89,39 +89,46 @@ Instructions:
 Write ONLY the final English image generation prompt. No introductory or explanatory text.
         `.trim();
 
-        for (const modelName of candidateModels) {
-          try {
-            const model = genAI.getGenerativeModel({ model: modelName });
-            const result = await model.generateContent(llmPrompt);
-            const text = result.response.text().trim();
-            if (text && text.length > 20) {
-              generatedText = text;
-              break;
+        // High-Speed Guard: Race Gemini against a 3.5s timeout so admin is never delayed by slow LLM responses
+        const geminiPromise = (async () => {
+          for (const modelName of candidateModels) {
+            try {
+              const model = genAI.getGenerativeModel({ model: modelName });
+              const result = await model.generateContent(llmPrompt);
+              const text = result.response.text().trim();
+              if (text && text.length > 20) {
+                return text;
+              }
+            } catch {
+              // try next model
             }
-          } catch (modelErr) {
-            console.warn(`Gemini model ${modelName} unavailable, trying next...`);
           }
-        }
+          return null;
+        })();
 
-        if (generatedText) {
-          englishImagePrompt = generatedText;
+        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
+        const fastestPrompt = await Promise.race([geminiPromise, timeoutPromise]);
+
+        if (fastestPrompt) {
+          englishImagePrompt = fastestPrompt;
         }
       } catch (llmError) {
-        console.error('Gemini text translation failed, using style fallback prompt:', llmError);
+        console.warn('Gemini text translation bypassed for speed, using style prompt:', llmError);
       }
     }
 
-    // Step 2: Generate artwork using Pollinations with FLUX model and fallback models
+    // Step 2: Generate artwork using Pollinations with high-speed model rotation
     let imageBuffer: ArrayBuffer | null = null;
     const seed = Math.floor(Math.random() * 9999999);
-    const candidateModels = ['flux', 'sana', 'turbo'];
+    // Prioritize high-speed models in turbo mode for sub-3-second responses
+    const candidateModels = isTurbo ? ['turbo', 'sana', 'flux'] : ['flux', 'turbo', 'sana'];
 
-    // Try primary and fallback models
+    // Try primary and fallback models with 7-second individual timeouts
     for (const modelCandidate of candidateModels) {
       const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=${modelCandidate}`;
       
       try {
-        const imgRes = await fetch(pollUrl);
+        const imgRes = await fetch(pollUrl, { signal: AbortSignal.timeout(7000) });
         if (imgRes.status === 200) {
           const contentType = imgRes.headers.get('content-type') || '';
           if (contentType.includes('image')) {
@@ -130,27 +137,27 @@ Write ONLY the final English image generation prompt. No introductory or explana
           }
         }
       } catch (err) {
-        console.warn(`Failed with model ${modelCandidate}:`, err);
+        console.warn(`Attempt with ${modelCandidate} failed/timed out, rotating...`);
       }
     }
 
-    // If candidate models returned 402/rate-limited, wait 10s and retry with flux
+    // Fast adaptive retry: Wait only 3s (instead of 10s) if initial attempt hit rate limits
     if (!imageBuffer) {
-      await new Promise((resolve) => setTimeout(resolve, 10000));
-      const retryUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=flux`;
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const retryUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=turbo`;
       try {
-        const retryRes = await fetch(retryUrl);
+        const retryRes = await fetch(retryUrl, { signal: AbortSignal.timeout(7000) });
         if (retryRes.status === 200) {
           imageBuffer = await retryRes.arrayBuffer();
         }
       } catch (retryErr) {
-        console.error('Retry error:', retryErr);
+        console.error('Turbo retry error:', retryErr);
       }
     }
 
     if (!imageBuffer) {
       return NextResponse.json({
-        error: 'AI image generator is cooling down. Please wait 20-25 seconds before regenerating, or upload your own image.'
+        error: 'AI image generator is cooling down. Please wait 10-15 seconds before regenerating, or upload your own image.'
       }, { status: 429 });
     }
 
@@ -208,6 +215,7 @@ Write ONLY the final English image generation prompt. No introductory or explana
     return NextResponse.json({
       url: publicData.publicUrl,
       prompt: englishImagePrompt,
+      durationMs: Date.now() - startTime,
     });
   } catch (err: any) {
     console.error('Unexpected artwork generation error:', err);

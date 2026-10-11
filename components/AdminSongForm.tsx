@@ -59,6 +59,7 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
           style: artStyle,
           customHint,
           previousUrl: coverUrl,
+          turbo: true,
         }),
       });
 
@@ -66,7 +67,7 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
 
       if (!res.ok) {
         if (res.status === 429) {
-          setCooldown(25);
+          setCooldown(10);
         }
         throw new Error(data.error || 'Failed to generate artwork');
       }
@@ -74,8 +75,8 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
       if (data.url) {
         setCoverUrl(data.url);
         if (data.prompt) setGeneratedConcept(data.prompt);
-        // 25-second cooldown to respect free AI rate limits
-        setCooldown(25);
+        // Short 5-second cooldown for responsive workflow
+        setCooldown(5);
         // Clear file input if AI artwork is generated
         setFilePreview(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
