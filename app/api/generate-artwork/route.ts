@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
     if (apiKey) {
       try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        // Use the current active Gemini 3.8 Flash model
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.8-flash' });
         
         const llmPrompt = `
 You are an expert art director creating an album cover art design for an Odia song.
@@ -89,38 +90,40 @@ Write ONLY the final English image generation prompt. No introductory or explana
       }
     }
 
-    // Step 2: Pass the refined prompt to Pollinations Turbo
+    // Step 2: Generate artwork using Pollinations with FLUX model and fallback models
     let imageBuffer: ArrayBuffer | null = null;
     const seed = Math.floor(Math.random() * 9999999);
-    const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=turbo`;
-    
-    // Attempt with retry if 402 rate-limit cooldown is active
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    const candidateModels = ['flux', 'sana', 'turbo'];
+
+    // Try primary and fallback models
+    for (const modelCandidate of candidateModels) {
+      const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=${modelCandidate}`;
+      
       try {
         const imgRes = await fetch(pollUrl);
         if (imgRes.status === 200) {
-          imageBuffer = await imgRes.arrayBuffer();
-          break;
-        } else if (imgRes.status === 402) {
-          if (attempt === 1) {
-            // Wait 15 seconds for Pollinations cooldown and retry once
-            await new Promise((resolve) => setTimeout(resolve, 15000));
-            continue;
-          } else {
-            return NextResponse.json({
-              error: 'AI image generator is cooling down. Please wait 20-25 seconds before regenerating, or upload your own image.'
-            }, { status: 429 });
+          const contentType = imgRes.headers.get('content-type') || '';
+          if (contentType.includes('image')) {
+            imageBuffer = await imgRes.arrayBuffer();
+            break;
           }
-        } else {
-          throw new Error(`Image API returned status ${imgRes.status}`);
         }
-      } catch (genError: any) {
-        if (attempt === 2) {
-          console.error('Image generation fallback error:', genError);
-          return NextResponse.json({
-            error: genError.message || 'AI service temporarily unavailable. Please try again in 25 seconds or upload a photo.'
-          }, { status: 500 });
+      } catch (err) {
+        console.warn(`Failed with model ${modelCandidate}:`, err);
+      }
+    }
+
+    // If candidate models returned 402/rate-limited, wait 10s and retry with flux
+    if (!imageBuffer) {
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+      const retryUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=flux`;
+      try {
+        const retryRes = await fetch(retryUrl);
+        if (retryRes.status === 200) {
+          imageBuffer = await retryRes.arrayBuffer();
         }
+      } catch (retryErr) {
+        console.error('Retry error:', retryErr);
       }
     }
 
