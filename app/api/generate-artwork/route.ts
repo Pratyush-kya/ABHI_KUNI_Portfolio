@@ -132,14 +132,18 @@ Write ONLY the final English image generation prompt. No introductory or explana
 
     let finalBuffer = Buffer.from(imageBuffer);
     
-    // Step 3: Crop Pollinations watermark at the bottom and convert to WebP using sharp
+    // Step 3: Crop Pollinations watermark at the bottom and convert to high-quality JPEG using sharp
     try {
       const metadata = await sharp(finalBuffer).metadata();
       if (metadata.width && metadata.height) {
         const cropHeight = Math.max(1, metadata.height - 65);
         finalBuffer = await sharp(finalBuffer)
           .extract({ width: metadata.width, height: cropHeight, left: 0, top: 0 })
-          .webp({ quality: 85, effort: 4 })
+          .jpeg({ quality: 86, mozjpeg: true })
+          .toBuffer();
+      } else {
+        finalBuffer = await sharp(finalBuffer)
+          .jpeg({ quality: 86, mozjpeg: true })
           .toBuffer();
       }
     } catch (cropError) {
@@ -161,12 +165,12 @@ Write ONLY the final English image generation prompt. No introductory or explana
       }
     }
 
-    // Step 5: Upload optimized WebP to Supabase Storage
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.webp`;
+    // Step 5: Upload optimized JPEG to Supabase Storage
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
 
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
       .from('song-artwork')
-      .upload(fileName, finalBuffer, { contentType: 'image/webp', upsert: false });
+      .upload(fileName, finalBuffer, { contentType: 'image/jpeg', upsert: false });
 
     if (uploadError) {
       console.error('Supabase upload error:', uploadError);
