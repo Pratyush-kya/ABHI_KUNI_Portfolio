@@ -26,15 +26,19 @@ export default function SongCard({ song }: { song: Song }) {
       className="group relative block rounded-2xl overflow-hidden border border-zinc-800/90 bg-zinc-900/95 hover:border-amber-500/70 hover:shadow-[0_8px_30px_rgb(245,158,11,0.12)] transition-all duration-300 cursor-pointer"
     >
       {/* Artwork Container */}
-      <div className="relative h-48 w-full overflow-hidden bg-zinc-950">
+      <div className="relative aspect-[4/3] sm:aspect-[16/10] w-full overflow-hidden bg-zinc-950">
         {song.cover_image_url ? (
-          <Image
-            src={song.cover_image_url}
-            alt={song.title}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
-          />
+          <>
+            <Image
+              src={song.cover_image_url}
+              alt={song.title}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
+            />
+            {/* Subtle bottom vignette for elegant contrast */}
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent pointer-events-none" />
+          </>
         ) : (
           <div className={`h-full w-full bg-gradient-to-br ${getGradient(song.id)} flex items-center justify-center`}>
             <span className="font-odia text-white text-4xl font-bold opacity-75">{song.title.charAt(0)}</span>
@@ -42,16 +46,16 @@ export default function SongCard({ song }: { song: Song }) {
         )}
 
         {/* Top Badges Overlay */}
-        <div className="absolute top-3 inset-x-3 flex items-center justify-between pointer-events-none">
+        <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between pointer-events-none z-10">
           {/* Year & Month Tag */}
-          <span className="px-2.5 py-1 rounded-full text-[11px] font-ui font-semibold bg-zinc-950/80 backdrop-blur-md text-amber-400 border border-amber-500/30 shadow-sm flex items-center gap-1">
+          <span className="px-2.5 py-1 rounded-full text-[11px] font-ui font-semibold bg-zinc-950/85 backdrop-blur-md text-amber-400 border border-amber-500/30 shadow-md flex items-center gap-1">
             <Calendar className="w-3 h-3 text-amber-400" />
             {month} {year}
           </span>
 
           {/* Category Tag */}
           {song.category && (
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-odia font-medium bg-zinc-900/85 backdrop-blur-md text-zinc-200 border border-zinc-700/60 shadow-sm">
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-odia font-medium bg-zinc-950/85 backdrop-blur-md text-zinc-200 border border-zinc-700/60 shadow-md">
               {song.category}
             </span>
           )}

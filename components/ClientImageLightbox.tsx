@@ -10,10 +10,10 @@ export default function ClientImageLightbox({ src, alt }: { src: string; alt: st
   return (
     <>
       <div 
-        className="relative h-64 sm:h-96 w-full rounded-2xl overflow-hidden mb-8 cursor-zoom-in group border border-zinc-800 transition-all hover:border-zinc-700 hover:shadow-2xl"
+        className="relative aspect-[4/3] sm:aspect-video max-h-[480px] w-full rounded-2xl overflow-hidden mb-8 cursor-zoom-in group border border-zinc-800 transition-all hover:border-zinc-700 hover:shadow-2xl bg-zinc-950"
         onClick={() => setIsOpen(true)}
       >
-        <Image src={src} alt={alt} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+        <Image src={src} alt={alt} fill className="object-cover object-center transition-transform duration-700 group-hover:scale-105" priority />
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
           <span className="opacity-0 group-hover:opacity-100 text-white font-ui font-medium bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm transition-opacity duration-300">
             View Full Image

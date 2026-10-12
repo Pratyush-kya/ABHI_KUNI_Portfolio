@@ -152,18 +152,26 @@ Write ONLY the final English text-to-image prompt.
       }
     }
 
-    // Step 2: Generate artwork using Pollinations with FLUX and high-speed models
+    // Step 2: Generate artwork using Pollinations with high-definition native models
     let imageBuffer: ArrayBuffer | null = null;
     const seed = Math.floor(Math.random() * 9999999);
-    // FLUX delivers ultra-high-definition prominence and clarity; turbo and sana provide rapid fallbacks
-    const candidateModels = isTurbo ? ['flux', 'turbo', 'sana', 'flux-realism'] : ['flux', 'flux-realism', 'turbo', 'sana'];
+    // Models to try in sequence: default free endpoint first, then sana, turbo, flux
+    const candidateModels = isTurbo ? ['', 'sana', 'turbo', 'flux'] : ['', 'sana', 'flux', 'turbo'];
+    const apiKeyParam = process.env.POLLINATIONS_API_KEY ? `&key=${process.env.POLLINATIONS_API_KEY}` : '';
 
     // Try primary and fallback models with 9-second individual timeouts
     for (const modelCandidate of candidateModels) {
-      const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=${modelCandidate}&nologo=true`;
+      const pollUrl = modelCandidate
+        ? `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?model=${modelCandidate}&seed=${seed}${apiKeyParam}`
+        : `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?seed=${seed}${apiKeyParam}`;
       
       try {
-        const imgRes = await fetch(pollUrl, { signal: AbortSignal.timeout(9000) });
+        const imgRes = await fetch(pollUrl, {
+          signal: AbortSignal.timeout(9000),
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+          }
+        });
         if (imgRes.status === 200) {
           const contentType = imgRes.headers.get('content-type') || '';
           if (contentType.includes('image')) {
@@ -172,21 +180,26 @@ Write ONLY the final English text-to-image prompt.
           }
         }
       } catch (err) {
-        console.warn(`Attempt with ${modelCandidate} failed/timed out, rotating...`);
+        console.warn(`Attempt with ${modelCandidate || 'default'} failed/timed out, rotating...`);
       }
     }
 
-    // Fast adaptive retry: Wait 3s if initial attempt hit rate limits
+    // Fast adaptive retry: Wait 2s if initial attempt hit temporary network congestion
     if (!imageBuffer) {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      const retryUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=turbo&nologo=true`;
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const retryUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?seed=${seed}${apiKeyParam}`;
       try {
-        const retryRes = await fetch(retryUrl, { signal: AbortSignal.timeout(8000) });
+        const retryRes = await fetch(retryUrl, {
+          signal: AbortSignal.timeout(8000),
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+          }
+        });
         if (retryRes.status === 200) {
           imageBuffer = await retryRes.arrayBuffer();
         }
       } catch (retryErr) {
-        console.error('Turbo retry error:', retryErr);
+        console.error('Fallback retry error:', retryErr);
       }
     }
 
@@ -198,18 +211,19 @@ Write ONLY the final English text-to-image prompt.
 
     let finalBuffer = Buffer.from(imageBuffer);
     
-    // Step 3: Crop Pollinations watermark at the bottom and convert to high-quality JPEG using sharp
+    // Step 3: Trim only the tiny 20px edge watermark cleanly while preserving 100% of the artwork subject
     try {
       const metadata = await sharp(finalBuffer).metadata();
       if (metadata.width && metadata.height) {
-        const cropHeight = Math.max(1, metadata.height - 65);
+        // Only trim 30 pixels (preserving 96%+ of the full scene, avoiding chopped subjects or pedestals)
+        const cropHeight = Math.max(1, metadata.height - 30);
         finalBuffer = await sharp(finalBuffer)
           .extract({ width: metadata.width, height: cropHeight, left: 0, top: 0 })
-          .jpeg({ quality: 86, mozjpeg: true })
+          .jpeg({ quality: 88, mozjpeg: true })
           .toBuffer();
       } else {
         finalBuffer = await sharp(finalBuffer)
-          .jpeg({ quality: 86, mozjpeg: true })
+          .jpeg({ quality: 88, mozjpeg: true })
           .toBuffer();
       }
     } catch (cropError) {
