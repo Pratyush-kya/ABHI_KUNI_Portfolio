@@ -23,7 +23,8 @@ export default function SongCard({ song }: { song: Song }) {
   return (
     <Link
       href={`/song/${song.slug}`}
-      className="group relative block rounded-2xl overflow-hidden border border-zinc-800/90 bg-zinc-900/95 hover:border-amber-500/70 hover:shadow-[0_8px_30px_rgb(245,158,11,0.12)] transition-all duration-300 cursor-pointer"
+      prefetch={true}
+      className="group relative block rounded-2xl overflow-hidden border border-zinc-800/90 bg-zinc-900/95 hover:border-amber-500/70 hover:shadow-[0_8px_30px_rgb(245,158,11,0.12)] active:scale-[0.98] active:border-amber-500/80 transition-all duration-150 cursor-pointer"
     >
       {/* Artwork Container */}
       <div className="relative aspect-[4/3] sm:aspect-[16/10] w-full overflow-hidden bg-zinc-950">

@@ -106,7 +106,7 @@ export default function SongCatalog({ songs }: { songs: Song[] }) {
 
             <button
               onClick={() => setSelectedYear('all')}
-              className={`px-3 py-1 rounded-full text-xs font-ui font-medium transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-full text-xs font-ui font-medium transition-all active:scale-95 cursor-pointer ${
                 selectedYear === 'all'
                   ? 'bg-amber-500 text-zinc-950 font-semibold shadow-sm'
                   : 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-750 border border-zinc-700/60'
@@ -122,7 +122,7 @@ export default function SongCatalog({ songs }: { songs: Song[] }) {
                 <button
                   key={yr}
                   onClick={() => setSelectedYear(isActive ? 'all' : yr)}
-                  className={`px-3 py-1 rounded-full text-xs font-ui font-medium transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-full text-xs font-ui font-medium transition-all active:scale-95 cursor-pointer ${
                     isActive
                       ? 'bg-amber-500 text-zinc-950 font-semibold shadow-sm'
                       : 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-750 border border-zinc-700/60'
@@ -140,7 +140,7 @@ export default function SongCatalog({ songs }: { songs: Song[] }) {
               <span className="text-[11px] font-ui text-zinc-500 mr-1">Month:</span>
               <button
                 onClick={() => setSelectedMonth('all')}
-                className={`px-2.5 py-0.5 rounded-md text-[11px] font-ui transition-all cursor-pointer ${
+                className={`px-2.5 py-0.5 rounded-md text-[11px] font-ui transition-all active:scale-95 cursor-pointer ${
                   selectedMonth === 'all'
                     ? 'bg-zinc-200 text-zinc-900 font-semibold'
                     : 'text-zinc-400 hover:text-zinc-200'
@@ -152,7 +152,7 @@ export default function SongCatalog({ songs }: { songs: Song[] }) {
                 <button
                   key={m}
                   onClick={() => setSelectedMonth(selectedMonth === m ? 'all' : m)}
-                  className={`px-2.5 py-0.5 rounded-md text-[11px] font-ui transition-all cursor-pointer ${
+                  className={`px-2.5 py-0.5 rounded-md text-[11px] font-ui transition-all active:scale-95 cursor-pointer ${
                     selectedMonth === m
                       ? 'bg-zinc-200 text-zinc-900 font-semibold'
                       : 'text-zinc-400 hover:text-zinc-200'
@@ -170,7 +170,7 @@ export default function SongCatalog({ songs }: { songs: Song[] }) {
               <span className="text-xs font-ui text-zinc-400 mr-1">Category:</span>
               <button
                 onClick={() => setSelectedCategory('all')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-odia transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-odia transition-all active:scale-95 cursor-pointer ${
                   selectedCategory === 'all'
                     ? 'bg-zinc-100 text-zinc-900 font-medium'
                     : 'bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 border border-zinc-750'
@@ -182,7 +182,7 @@ export default function SongCatalog({ songs }: { songs: Song[] }) {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(selectedCategory === cat ? 'all' : cat)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-odia transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-odia transition-all active:scale-95 cursor-pointer ${
                     selectedCategory === cat
                       ? 'bg-amber-400/20 text-amber-300 border border-amber-400/50 font-medium'
                       : 'bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 border border-zinc-750'

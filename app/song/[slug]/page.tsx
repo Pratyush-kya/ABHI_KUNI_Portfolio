@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatDate } from '@/lib/utils';
 import type { Song } from '@/types/song';
@@ -7,10 +8,20 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import ClientImageLightbox from '@/components/ClientImageLightbox';
 
-async function getSong(slug: string): Promise<Song | null> {
+export const dynamicParams = true;
+export const revalidate = 60; // ISR cache on Vercel CDN
+
+const getSong = cache(async (slug: string): Promise<Song | null> => {
   const decodedSlug = decodeURIComponent(slug);
   const { data } = await supabase.from('songs').select('*').eq('slug', decodedSlug).single();
   return data;
+});
+
+export async function generateStaticParams() {
+  const { data } = await supabase.from('songs').select('slug');
+  return (data ?? []).map((song) => ({
+    slug: song.slug,
+  }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
