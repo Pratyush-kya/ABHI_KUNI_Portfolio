@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef } from 'react';
-import { Sparkles, Loader2, CheckCircle2, AlertCircle, RefreshCw, Send, Trash2, Layers, Zap, Pause, Play } from 'lucide-react';
+import { Sparkles, Loader2, CheckCircle2, AlertCircle, RefreshCw, Send, Trash2, Layers, Zap, Pause, Shuffle } from 'lucide-react';
 import Image from 'next/image';
 
 interface DraftSong {
@@ -17,15 +17,37 @@ interface DraftSong {
 }
 
 const ART_STYLES = [
-  { id: 'poetic', label: '🌿 ଭାବପୂର୍ଣ୍ଣ (Poetic)' },
-  { id: 'devotional', label: '🛕 ମନ୍ଦିର (Temple)' },
+  { id: 'mix', label: '🎲 ବହୁବିଧ ଶୈଳୀ (Mixed Variety - All 4 Styles)' },
+  { id: 'devotional', label: '🛕 ମନ୍ଦିର (Temple & Bhakti)' },
+  { id: 'nature', label: '🌅 ପ୍ରକୃତି (Nature & Village)' },
   { id: 'pattachitra', label: '🎨 ପଟ୍ଟଚିତ୍ର (Folk Art)' },
-  { id: 'nature', label: '🌅 ପ୍ରକୃତି (Nature)' },
+  { id: 'poetic', label: '🌿 ଭାବପୂର୍ଣ୍ଣ (Poetic & Simple)' },
 ];
+
+function detectOdiaStyle(title: string, lyrics: string, index: number): string {
+  const text = `${title} ${lyrics}`;
+  
+  if (/ଜଗନ୍ନାଥ|ହରି|କୃଷ୍ଣ|ନନ୍ଦ|ଗୋବିନ୍ଦ|ଯଶୋଦା|ଦଶହରା|ଦୁର୍ଗା|ମନ୍ଦିର|ଭଜନ|ଭକ୍ତ|ଭକ୍ତି|ପୂଜା|ଦୀପ|କରୁଣା|ପ୍ରଭୁ|ଠାକୁର/i.test(text)) {
+    return 'devotional';
+  }
+  if (/ସଜନା|ଗଛ|ଗୋଧୂଳି|ଗାଈ|ନଈ|ନଦୀ|ପକ୍ଷୀ|ପ୍ରକୃତି|ଗାଆଁ|ସୂର୍ଯ୍ୟ|ସକାଳ|ପତ୍ର|ଫୁଲ/i.test(text)) {
+    return 'nature';
+  }
+  if (/ପଟ୍ଟଚିତ୍ର|କଳା|ଓଡ଼ିଶା|ପରମ୍ପରା|ଐତିହ୍ୟ|ସଂସ୍କୃତି|ରାଧା/i.test(text)) {
+    return 'pattachitra';
+  }
+  if (/ସଂସାର|ମୋକ୍ଷ|ଧର୍ମ|ଫଳ|ଜୀବନ|ମନ|ପ୍ରେମ|କବିତା|ସ୍ମୃତି|ଦୁଃଖ|ସୁଖ/i.test(text)) {
+    return 'poetic';
+  }
+
+  // Round-robin distribution across all 4 styles to guarantee diverse, colorful responses
+  const pool = ['devotional', 'nature', 'pattachitra', 'poetic'];
+  return pool[index % pool.length];
+}
 
 export default function BulkSongIngest({ onComplete }: { onComplete: () => void }) {
   const [rawText, setRawText] = useState('');
-  const [globalStyle, setGlobalStyle] = useState('poetic');
+  const [globalStyle, setGlobalStyle] = useState('mix');
   const [useTurbo, setUseTurbo] = useState(true);
   const [drafts, setDrafts] = useState<DraftSong[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -68,19 +90,31 @@ export default function BulkSongIngest({ onComplete }: { onComplete: () => void 
 
       const lyrics = lyricsLines.join('\n').trim();
 
+      // Style determination: mixed diversity or specific choice
+      let songStyle = globalStyle;
+      if (globalStyle === 'mix') {
+        songStyle = detectOdiaStyle(title, lyrics, idx);
+      }
+
       if (title) {
         parsed.push({
           id: `draft-${idx}-${Date.now()}`,
           title,
           category: category || 'ଗୀତ',
           lyrics,
-          style: globalStyle,
+          style: songStyle,
           status: 'idle',
         });
       }
     });
 
     setDrafts(parsed);
+  }
+
+  function updateDraftStyle(draftId: string, newStyle: string) {
+    setDrafts((prev) =>
+      prev.map((d) => (d.id === draftId ? { ...d, style: newStyle } : d))
+    );
   }
 
   // Generate artwork for a single song
@@ -236,7 +270,7 @@ export default function BulkSongIngest({ onComplete }: { onComplete: () => void 
             Bulk Song Ingestion Studio
           </h2>
           <p className="font-ui text-xs text-zinc-400 mt-1">
-            Publish all songs instantly (<span className="text-amber-400 font-medium">&lt;1s</span>) with artistic gradient covers, or auto-generate AI artwork with the turbo multi-worker engine.
+            Publish all songs instantly (<span className="text-amber-400 font-medium">&lt;1s</span>) with artistic gradient covers, or auto-generate AI artwork with the diverse turbo engine.
           </p>
         </div>
 
@@ -254,7 +288,7 @@ export default function BulkSongIngest({ onComplete }: { onComplete: () => void 
           </label>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-ui text-zinc-400">Default Style:</span>
+            <span className="text-xs font-ui text-zinc-400">Batch Style Mode:</span>
             <select
               value={globalStyle}
               onChange={(e) => setGlobalStyle(e.target.value)}
@@ -300,8 +334,9 @@ Lyrics:
           />
 
           <div className="flex items-center justify-between pt-1">
-            <span className="text-xs font-ui text-zinc-500">
-              💡 Supports bulk Odia lyrics. The parser will automatically extract Title, Category, and Lyrics.
+            <span className="text-xs font-ui text-zinc-500 flex items-center gap-1.5">
+              <Shuffle className="w-3.5 h-3.5 text-amber-500" />
+              <span>Auto-detects diverse styles across Temple, Nature, Folk Art, and Poetic themes.</span>
             </span>
             <button
               type="button"
@@ -327,7 +362,7 @@ Lyrics:
                 </span>
               </div>
               <p className="text-xs font-ui text-zinc-400 mt-1">
-                You can publish immediately with gradient covers, or generate AI artwork in parallel.
+                Songs will generate with a diverse mix of styles tailored to their lyrics.
               </p>
             </div>
 
@@ -423,7 +458,7 @@ Lyrics:
                 </div>
 
                 {/* Draft Information */}
-                <div className="flex-1 min-w-0 space-y-1">
+                <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <h3 className="font-odia font-semibold text-base text-zinc-100 truncate">
                       {draft.title}
@@ -431,24 +466,37 @@ Lyrics:
                     <button
                       type="button"
                       onClick={() => removeDraft(draft.id)}
-                      className="text-zinc-500 hover:text-red-400 p-1"
+                      className="text-zinc-500 hover:text-red-400 p-1 cursor-pointer"
                       title="Remove draft"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="inline-block px-2 py-0.5 rounded text-[10px] font-odia bg-zinc-800 text-zinc-300">
                       {draft.category}
                     </span>
+
+                    {/* Individual Style Selector */}
+                    <select
+                      value={draft.style}
+                      onChange={(e) => updateDraftStyle(draft.id, e.target.value)}
+                      className="text-[10px] font-ui px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-750 text-zinc-300 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    >
+                      <option value="devotional">🛕 ମନ୍ଦିର (Temple)</option>
+                      <option value="nature">🌅 ପ୍ରକୃତି (Nature)</option>
+                      <option value="pattachitra">🎨 ପଟ୍ଟଚିତ୍ର (Folk)</option>
+                      <option value="poetic">🌿 ଭାବପୂର୍ଣ୍ଣ (Poetic)</option>
+                    </select>
+
                     {draft.cover_image_url ? (
                       <span className="text-[10px] font-ui text-emerald-400 flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" /> AI Art
                       </span>
                     ) : (
                       <span className="text-[10px] font-ui text-zinc-500">
-                        Gradient Cover (Default)
+                        Gradient Cover
                       </span>
                     )}
                   </div>
@@ -456,6 +504,12 @@ Lyrics:
                   <p className="font-odia text-xs text-zinc-400 line-clamp-2 leading-relaxed">
                     {draft.lyrics}
                   </p>
+
+                  {draft.promptConcept && (
+                    <p className="text-[10px] font-ui text-amber-500/80 italic line-clamp-1" title={draft.promptConcept}>
+                      Concept: {draft.promptConcept}
+                    </p>
+                  )}
 
                   {draft.status === 'error' && (
                     <p className="text-[10px] font-ui text-red-400 flex items-center gap-1 pt-1">

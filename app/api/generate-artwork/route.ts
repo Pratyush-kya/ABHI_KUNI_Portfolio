@@ -6,6 +6,47 @@ import sharp from 'sharp';
 
 export const maxDuration = 60;
 
+function buildThematicFallbackPrompt(title: string, lyrics: string, style: string, customHint: string): string {
+  const combined = `${title} ${lyrics}`;
+  
+  if (customHint) {
+    return `${customHint}, cinematic lighting, high quality album cover art, clean focal point.`;
+  }
+  
+  // Specific Odia topic recognizers
+  if (combined.includes('ସଜନା') || combined.includes('ବାଡ଼ି') || combined.includes('ଗଛ')) {
+    return 'A magnificent leafy green Sajana moringa tree full of delicate white blossoms standing proud in a rustic Odishan village backyard, warm golden morning light, serene countryside, cinematic depth.';
+  }
+  if (combined.includes('ନନ୍ଦ') || combined.includes('କୃଷ୍ଣ') || combined.includes('ଗୋବିନ୍ଦ') || combined.includes('ଯଶୋଦା')) {
+    return 'A radiant baby Krishna sitting joyfully in the loving lap of mother Yashoda inside a warmly lit traditional Odishan home, glowing brass diya lamps, marigold garlands, divine golden atmosphere.';
+  }
+  if (combined.includes('ଦଶହରା') || combined.includes('ଦୁର୍ଗା') || combined.includes('କଟକ')) {
+    return 'Majestic Goddess Durga idol in traditional silver filigree Chandi Medha pandal of Cuttack, ornate silver work, glowing festive oil lamps, vibrant Odishan celebration.';
+  }
+  if (combined.includes('ଗୋଧୂଳି') || combined.includes('ଗାଈ') || combined.includes('ସନ୍ଧ୍ୟା')) {
+    return 'Magical Odishan twilight godhuli belaa with cattle walking home on an earthen village path kicking up golden dust, peaceful setting sun reflections, serene village dusk.';
+  }
+  if (combined.includes('ଜଗନ୍ନାଥ') || combined.includes('ହରି') || combined.includes('କରୁଣା') || combined.includes('ମନ୍ଦିର')) {
+    return 'Ancient stone Kalinga temple sanctum glowing with warm earthen clay diya lamps at spiritual twilight, serene divine atmosphere, sacred lotus offerings, peaceful devotion.';
+  }
+  if (combined.includes('ଧର୍ମ') || combined.includes('ମୋକ୍ଷ') || combined.includes('ଫଳ') || combined.includes('ସଂସାର')) {
+    return 'Ancient sacred palm-leaf manuscript illuminated by a serene glowing earthen lamp, sacred tulsi leaves, contemplative spiritual depth, warm golden light.';
+  }
+
+  // Style-guided fallback
+  switch (style) {
+    case 'devotional':
+      return 'Majestic ancient Odisha Kalinga-style stone temple silhouette at spiritual twilight, warm glowing terracotta clay diya lamp on wet stone steps, sacred atmosphere, serene golden illumination.';
+    case 'nature':
+      return 'Cinematic landscape photography of rural Odisha countryside, serene riverbank with a wooden boat, tranquil lotus pond, golden twilight reflections, lush greenery, peaceful rural dawn.';
+    case 'pattachitra':
+      return 'Authentic Odisha Pattachitra folk art illustration of traditional Odishan cultural celebration, crisp hand-painted black outlines, ornate temple border, natural earthy mineral pigments of terracotta and indigo.';
+    case 'poetic':
+    default:
+      return 'Minimalist cinematic album cover art, a single symbolic physical subject with soft bokeh and shallow depth of field, warm emotional golden hour lighting, clean and elegant visual metaphor.';
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Security Guard: Only authenticated admins may invoke AI artwork generation
@@ -52,44 +93,38 @@ export async function POST(req: NextRequest) {
         break;
     }
 
-    // Step 1: Default style-specific prompts if Gemini is unreachable or on cooldown
-    // This guarantees that each of the 4 styles generates a completely distinct, theme-appropriate image!
-    const styleDefaults: Record<string, string> = {
-      pattachitra: `Authentic Odisha Pattachitra folk art illustration of ${customHint || 'traditional Odishan cultural celebration and sacred lotus motifs'}, crisp hand-painted black outlines, ornate temple border, natural earthy mineral pigments of terracotta, deep indigo, and turmeric yellow.`,
-      nature: `Cinematic landscape photography of rural Odisha countryside, ${customHint || 'serene riverbank with a wooden boat, tranquil lotus pond, golden twilight reflections'}, lush greenery, peaceful rural dawn, minimalist and contemplative composition.`,
-      devotional: `Majestic ancient Odisha Kalinga-style stone temple silhouette at spiritual twilight, ${customHint || 'warm glowing terracotta clay diya lamp on wet stone steps'}, sacred atmosphere, serene golden illumination, deep peaceful devotion.`,
-      poetic: `Minimalist cinematic album cover art, ${customHint || 'a single symbolic physical subject with soft bokeh and shallow depth of field'}, warm emotional golden hour lighting, clean and elegant visual metaphor, heartfelt poetic longing.`
-    };
-
-    let englishImagePrompt = styleDefaults[style] || styleDefaults.poetic;
+    // Step 1: Curated thematic prompt synthesis
+    let englishImagePrompt = buildThematicFallbackPrompt(title, lyrics, style, customHint);
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
       try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const candidateModels = ['gemini-flash-latest', 'gemini-3.8-flash'];
+        // Active and available models in Google AI Studio
+        const candidateModels = ['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest'];
         
         const llmPrompt = `
-You are an expert art director creating an album cover art design for an Odia song.
-Read the song title and lyrics carefully. Understand its core emotional soul, philosophical meaning, or story.
+You are a master visual art director for Odia music album covers.
+Analyze the song title and lyrics carefully to design a stunning, prominent, iconic text-to-image prompt.
 
-Odia Title: "${title}"
-Odia Lyrics Excerpt:
-"${lyrics ? lyrics.slice(0, 600) : ''}..."
-${customHint ? `Additional Creative Direction from Artist: "${customHint}"` : ''}
+Odia Song Title: "${title}"
+Odia Lyrics Sample:
+"${lyrics ? lyrics.slice(0, 800) : ''}"
+${customHint ? `Artist Direction: "${customHint}"` : ''}
 
-${styleGuidance}
+Aesthetic Style: ${style} (${styleGuidance})
 
-Instructions:
-1. Identify the SINGLE most meaningful physical visual metaphor or subject that tells the story of this song (for example: a lone earthen lamp in the breeze, a weathered boat resting on a calm riverbank, gentle working hands, footprints disappearing in coastal sand, sacred temple stairs at dawn).
-2. Keep the scene SIMPLE, FOCUSED, and IMMEDIATELY UNDERSTANDABLE. Do not clutter the image with too many elements.
-3. Describe the scene in 2-3 concise English sentences specifying the central subject, lighting, mood, and clean composition.
-4. Hard Negative Constraints: NO text, NO letters, NO words, NO collage, NO chaotic crowd, NO distorted figures, NO cluttered background, NO watermarks.
+Art Direction Rules:
+1. Identify the SINGLE CENTRAL ICONIC SUBJECT directly mentioned or symbolized in the song (e.g. if the song is about "Sajana Gacha", depict a magnificent leafy Sajana moringa tree in a rustic village courtyard; if "Nanda Ghare Ananda", depict joyful baby Krishna in Yashoda's arms with golden earthen lamps; if "Kataka Dasahara", depict the majestic silver filigree Chandi Medha Durga idol).
+2. The central subject must be PROMINENT, BOLD, and CLEARLY UNDERSTANDABLE at a single glance.
+3. Rich cinematic lighting: warm golden hour, temple oil lamp glow, or morning mist.
+4. Compose in 2 vivid English sentences describing the central subject, cultural details of Odisha, lighting, and composition.
+5. STRICT AVOIDANCE: NO text, NO letters, NO words, NO collage, NO split screen, NO blurry objects, NO watermark.
 
-Write ONLY the final English image generation prompt. No introductory or explanatory text.
+Write ONLY the final English text-to-image prompt.
         `.trim();
 
-        // High-Speed Guard: Race Gemini against a 3.5s timeout so admin is never delayed by slow LLM responses
+        // 6.5s timeout gives Gemini plenty of time while preventing request hangs
         const geminiPromise = (async () => {
           for (const modelName of candidateModels) {
             try {
@@ -106,29 +141,29 @@ Write ONLY the final English image generation prompt. No introductory or explana
           return null;
         })();
 
-        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
+        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 6500));
         const fastestPrompt = await Promise.race([geminiPromise, timeoutPromise]);
 
         if (fastestPrompt) {
           englishImagePrompt = fastestPrompt;
         }
       } catch (llmError) {
-        console.warn('Gemini text translation bypassed for speed, using style prompt:', llmError);
+        console.warn('Gemini text translation bypassed, using thematic fallback prompt:', llmError);
       }
     }
 
-    // Step 2: Generate artwork using Pollinations with high-speed model rotation
+    // Step 2: Generate artwork using Pollinations with FLUX and high-speed models
     let imageBuffer: ArrayBuffer | null = null;
     const seed = Math.floor(Math.random() * 9999999);
-    // Prioritize high-speed models in turbo mode for sub-3-second responses
-    const candidateModels = isTurbo ? ['turbo', 'sana', 'flux'] : ['flux', 'turbo', 'sana'];
+    // FLUX delivers ultra-high-definition prominence and clarity; turbo and sana provide rapid fallbacks
+    const candidateModels = isTurbo ? ['flux', 'turbo', 'sana', 'flux-realism'] : ['flux', 'flux-realism', 'turbo', 'sana'];
 
-    // Try primary and fallback models with 7-second individual timeouts
+    // Try primary and fallback models with 9-second individual timeouts
     for (const modelCandidate of candidateModels) {
-      const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=${modelCandidate}`;
+      const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=${modelCandidate}&nologo=true`;
       
       try {
-        const imgRes = await fetch(pollUrl, { signal: AbortSignal.timeout(7000) });
+        const imgRes = await fetch(pollUrl, { signal: AbortSignal.timeout(9000) });
         if (imgRes.status === 200) {
           const contentType = imgRes.headers.get('content-type') || '';
           if (contentType.includes('image')) {
@@ -141,12 +176,12 @@ Write ONLY the final English image generation prompt. No introductory or explana
       }
     }
 
-    // Fast adaptive retry: Wait only 3s (instead of 10s) if initial attempt hit rate limits
+    // Fast adaptive retry: Wait 3s if initial attempt hit rate limits
     if (!imageBuffer) {
       await new Promise((resolve) => setTimeout(resolve, 3000));
-      const retryUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=turbo`;
+      const retryUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(englishImagePrompt)}?width=1280&height=720&seed=${seed}&model=turbo&nologo=true`;
       try {
-        const retryRes = await fetch(retryUrl, { signal: AbortSignal.timeout(7000) });
+        const retryRes = await fetch(retryUrl, { signal: AbortSignal.timeout(8000) });
         if (retryRes.status === 200) {
           imageBuffer = await retryRes.arrayBuffer();
         }

@@ -3,18 +3,33 @@ import { useState, useEffect, useRef } from 'react';
 import { Sparkles, Loader2, AlertCircle, Upload, X } from 'lucide-react';
 
 const ART_STYLES = [
-  { id: 'poetic', label: '🌿 ଭାବପୂର୍ଣ୍ଣ (Poetic & Simple)', desc: 'Clean, emotional single subject' },
+  { id: 'auto', label: '✨ Auto-Detect (ଭାବ ଅନୁସାରେ)', desc: 'Intelligently detects from title & lyrics' },
   { id: 'devotional', label: '🛕 ମନ୍ଦିର (Temple & Bhakti)', desc: 'Sacred diya glow & temple silhouette' },
-  { id: 'pattachitra', label: '🎨 ପଟ୍ଟଚିତ୍ର (Folk Art)', desc: 'Traditional Odisha folk painting' },
   { id: 'nature', label: '🌅 ପ୍ରକୃତି (Nature & Village)', desc: 'Rural Odisha landscapes & peaceful dawn' },
+  { id: 'pattachitra', label: '🎨 ପଟ୍ଟଚିତ୍ର (Folk Art)', desc: 'Traditional Odisha folk painting' },
+  { id: 'poetic', label: '🌿 ଭାବପୂର୍ଣ୍ଣ (Poetic & Simple)', desc: 'Clean, emotional single subject' },
 ];
+
+function detectOdiaStyleSingle(title: string, lyrics: string): string {
+  const text = `${title} ${lyrics}`;
+  if (/ଜଗନ୍ନାଥ|ହରି|କୃଷ୍ଣ|ନନ୍ଦ|ଗୋବିନ୍ଦ|ଯଶୋଦା|ଦଶହରା|ଦୁର୍ଗା|ମନ୍ଦିର|ଭଜନ|ଭକ୍ତ|ଭକ୍ତି|ପୂଜା|ଦୀପ|କରୁଣା|ପ୍ରଭୁ|ଠାକୁର/i.test(text)) {
+    return 'devotional';
+  }
+  if (/ସଜନା|ଗଛ|ଗୋଧୂଳି|ଗାଈ|ନଈ|ନଦୀ|ପକ୍ଷୀ|ପ୍ରକୃତି|ଗାଆଁ|ସୂର୍ଯ୍ୟ|ସକାଳ|ପତ୍ର|ଫୁଲ/i.test(text)) {
+    return 'nature';
+  }
+  if (/ପଟ୍ଟଚିତ୍ର|କଳା|ଓଡ଼ିଶା|ପରମ୍ପରା|ଐତିହ୍ୟ|ସଂସ୍କୃତି|ରାଧା/i.test(text)) {
+    return 'pattachitra';
+  }
+  return 'poetic';
+}
 
 export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => Promise<void> }) {
   const [mounted, setMounted] = useState(false);
   const [title, setTitle] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [category, setCategory] = useState('ଗୀତ');
-  const [artStyle, setArtStyle] = useState('poetic');
+  const [artStyle, setArtStyle] = useState('auto');
   const [customHint, setCustomHint] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
   const [generatedConcept, setGeneratedConcept] = useState<string | null>(null);
@@ -49,6 +64,8 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
     setGenerating(true);
     setArtError(null);
 
+    const resolvedStyle = artStyle === 'auto' ? detectOdiaStyleSingle(title, lyrics) : artStyle;
+
     try {
       const res = await fetch('/api/generate-artwork', {
         method: 'POST',
@@ -56,7 +73,7 @@ export default function AdminSongForm({ addSong }: { addSong: (fd: FormData) => 
         body: JSON.stringify({
           title,
           lyrics,
-          style: artStyle,
+          style: resolvedStyle,
           customHint,
           previousUrl: coverUrl,
           turbo: true,
