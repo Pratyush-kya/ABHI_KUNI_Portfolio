@@ -7,6 +7,7 @@ import SharePrintButtons from '@/components/SharePrintButtons';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import ClientImageLightbox from '@/components/ClientImageLightbox';
+import LyricsTypesetter from '@/components/LyricsTypesetter';
 
 export const dynamicParams = true;
 export const revalidate = 60; // ISR cache on Vercel CDN
@@ -40,10 +41,11 @@ export default async function SongPage({ params }: { params: Promise<{ slug: str
   if (!song) notFound();
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12">
+    <div className="max-w-3xl mx-auto px-4 py-8 sm:py-12 animate-in fade-in duration-300">
       <Link
         href="/browse"
-        className="no-print inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-accent-dark transition-colors duration-200 cursor-pointer mb-8 font-ui"
+        prefetch={true}
+        className="no-print inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-amber-400 transition-colors duration-200 cursor-pointer mb-6 font-ui"
       >
         <ArrowLeft className="w-4 h-4" /> Back to Browse
       </Link>
@@ -52,19 +54,13 @@ export default async function SongPage({ params }: { params: Promise<{ slug: str
         <ClientImageLightbox src={song.cover_image_url} alt={song.title} />
       )}
 
-      <div className="mb-8">
-        <h1 className="print-title font-odia font-bold text-4xl text-zinc-50 mt-4 mb-2 leading-tight">
-          {song.title}
-        </h1>
-        <p className="print-meta font-odia text-sm text-zinc-400">
-          {song.author} · {formatDate(song.created_at)}
-        </p>
-      </div>
-
+      {/* LaTeX-Style Typeset Lyrics Viewport */}
       <div className="mb-10">
-        <pre className="lyrics-block font-odia text-xl text-zinc-100 leading-loose whitespace-pre-wrap break-words bg-zinc-900 rounded-2xl p-6 border border-zinc-800 shadow-xl">
-          {song.lyrics}
-        </pre>
+        <LyricsTypesetter
+          lyrics={song.lyrics}
+          title={song.title}
+          author={song.author || 'ଅବିନାଶ ରଥ'}
+        />
       </div>
 
       <SharePrintButtons title={song.title} />

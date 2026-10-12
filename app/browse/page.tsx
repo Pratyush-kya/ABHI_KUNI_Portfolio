@@ -19,12 +19,13 @@ export default async function BrowsePage() {
   const songs = await getAllSongs();
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
+    <div className="max-w-6xl mx-auto px-4 py-8 sm:py-12 animate-in fade-in duration-300">
       {/* Top Header */}
       <div className="mb-8">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-xs font-ui text-zinc-400 hover:text-amber-400 transition-colors mb-4"
+          prefetch={true}
+          className="inline-flex items-center gap-1.5 text-xs font-ui text-zinc-400 hover:text-amber-400 transition-colors mb-4 cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
         </Link>

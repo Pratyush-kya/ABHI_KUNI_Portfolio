@@ -28,14 +28,12 @@ export default function Navbar() {
           >
             All Songs Archive
           </Link>
-          <a
-            href="https://wa.me/?text=Hello%20Abinash%20Rath,%20I%20would%20like%20to%20connect%20regarding%20music%20lyrics."
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-850 text-amber-400 border border-amber-500/30 text-xs font-ui font-medium transition-all"
+          <Link
+            href="/#contact"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-850 text-amber-400 border border-amber-500/30 text-xs font-ui font-medium transition-all cursor-pointer active:scale-95"
           >
-            Contact
-          </a>
+            <span>Contact</span>
+          </Link>
         </div>
       </div>
     </nav>
