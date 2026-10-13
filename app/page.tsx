@@ -70,13 +70,13 @@ export default async function HomePage() {
             Browse All Songs Archive
           </Link>
 
-          <Link
-            href="/#contact"
+          <a
+            href="#contact"
             className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-850 text-zinc-200 border border-zinc-700/80 font-ui font-medium text-sm transition-all active:scale-95 cursor-pointer"
           >
             <Mail className="w-4 h-4 text-amber-400" />
             Contact via Gmail
-          </Link>
+          </a>
         </div>
 
         {/* Featured Stanza Quote Spotlight */}

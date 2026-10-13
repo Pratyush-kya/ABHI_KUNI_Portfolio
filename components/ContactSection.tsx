@@ -1,12 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Mail, Copy, Check, ExternalLink, Sparkles, Send, CheckCircle2 } from 'lucide-react';
+import { Mail, Copy, Check, ExternalLink, Sparkles, Send, CheckCircle2, MessageSquare } from 'lucide-react';
 
 const CONTACT_EMAIL = 'abinash.rath.music@gmail.com';
 
 export default function ContactSection() {
   const [copied, setCopied] = useState(false);
+  const [senderName, setSenderName] = useState('');
+  const [inquiryType, setInquiryType] = useState('Music & Lyrics Collaboration');
+  const [senderMessage, setSenderMessage] = useState('');
 
   const handleCopyEmail = async () => {
     try {
@@ -18,11 +21,14 @@ export default function ContactSection() {
     }
   };
 
-  const gmailWebUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
-    CONTACT_EMAIL
-  )}&su=${encodeURIComponent('Inquiry Regarding Odia Music / Lyrics — Abinash Rath')}&body=${encodeURIComponent(
-    'Hello Abinash Rath,\n\nI am contacting you regarding your Odia music and poetry portfolio (ABHI-KUNI).\n\nMy Details:\n• Name: \n• Collaboration Type (e.g. Song Composition / Lyrics / Project): \n• Message: \n'
-  )}`;
+  // Build dynamic subject and body based on interactive input
+  const emailSubject = encodeURIComponent(`[${inquiryType}] ${senderName ? `From ${senderName} - ` : ''}Abinash Rath Portfolio Inquiry`);
+  const emailBody = encodeURIComponent(
+    `Hello Abinash Rath,\n\n${senderMessage ? senderMessage : 'I am reaching out regarding your Odia music and poetry portfolio (ABHI-KUNI).'}\n\nSender Details:\n• Name: ${senderName || 'Not specified'}\n• Topic: ${inquiryType}\n• Contact Email: \n`
+  );
+
+  const nativeMailtoUrl = `mailto:${CONTACT_EMAIL}?subject=${emailSubject}&body=${emailBody}`;
+  const gmailWebUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(CONTACT_EMAIL)}&su=${emailSubject}&body=${emailBody}`;
 
   return (
     <section
@@ -82,26 +88,82 @@ export default function ContactSection() {
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Action Buttons: Native Mail App (opens Gmail on phones) & Web Gmail */}
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-            {/* Open Direct in Gmail Web */}
+            {/* Native mailto opens Gmail App directly on phones */}
+            <a
+              href={nativeMailtoUrl}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-zinc-950 font-ui font-semibold text-sm transition-all shadow-lg shadow-amber-500/20 active:scale-95 cursor-pointer"
+            >
+              <Send className="w-4 h-4" />
+              Send Email (Gmail / Mail App)
+            </a>
+
+            {/* Direct Gmail Web Composer for Desktop Browsers */}
             <a
               href={gmailWebUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-zinc-950 font-ui font-semibold text-sm transition-all shadow-lg shadow-amber-500/20 active:scale-95 cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-850 text-zinc-200 border border-zinc-700/80 font-ui font-medium text-sm transition-all active:scale-95 cursor-pointer"
             >
-              <ExternalLink className="w-4 h-4" />
-              Open Directly in Gmail
+              <ExternalLink className="w-4 h-4 text-amber-400" />
+              Open in Gmail Web (Browser)
             </a>
+          </div>
+        </div>
 
-            {/* Default Mail Client fallback */}
+        {/* Optional Quick Message Composer */}
+        <div className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 space-y-4 text-left">
+          <div className="flex items-center gap-2 text-zinc-200 font-ui text-sm font-semibold">
+            <MessageSquare className="w-4 h-4 text-amber-400" />
+            <span>Quick Message Draft (Pre-fill your email)</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-ui">
+            <div>
+              <label className="block text-zinc-400 mb-1">Your Name</label>
+              <input
+                type="text"
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+                placeholder="Enter your name..."
+                className="w-full px-3.5 py-2 rounded-xl bg-zinc-950/80 border border-zinc-750 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-zinc-400 mb-1">Topic / Inquiry Type</label>
+              <select
+                value={inquiryType}
+                onChange={(e) => setInquiryType(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl bg-zinc-950/80 border border-zinc-750 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              >
+                <option value="Music & Lyrics Collaboration">Music & Lyrics Collaboration</option>
+                <option value="Poem / Song Commission">Poem / Song Commission</option>
+                <option value="Lyrics Licensing & Rights">Lyrics Licensing & Rights</option>
+                <option value="Literary Feedback & Compliment">Literary Feedback & Compliment</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-zinc-400 text-xs font-ui mb-1">Message Preview</label>
+            <textarea
+              rows={3}
+              value={senderMessage}
+              onChange={(e) => setSenderMessage(e.target.value)}
+              placeholder="Write a brief message or project description..."
+              className="w-full px-3.5 py-2 rounded-xl bg-zinc-950/80 border border-zinc-750 text-zinc-100 placeholder:text-zinc-600 text-xs sm:text-sm font-ui focus:outline-none focus:ring-1 focus:ring-amber-500"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-1">
             <a
-              href={`mailto:${CONTACT_EMAIL}?subject=Music%20Collaboration%20Inquiry%20-%20Abinash%20Rath`}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700/80 font-ui font-medium text-sm transition-all active:scale-95 cursor-pointer"
+              href={nativeMailtoUrl}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-ui font-semibold transition-all active:scale-95"
             >
-              <Send className="w-4 h-4 text-amber-400" />
-              Open Default Mail App
+              <Send className="w-3.5 h-3.5" />
+              Launch Gmail with this Message
             </a>
           </div>
         </div>
@@ -114,7 +176,7 @@ export default function ContactSection() {
               <span>Select Email Method</span>
             </div>
             <p className="text-xs font-ui text-zinc-400 leading-relaxed">
-              Click &quot;Open in Gmail&quot; or copy the address to paste into your preferred email software.
+              Tap &quot;Send Email&quot; on your phone to open the Gmail app, or open in web browser.
             </p>
           </div>
 

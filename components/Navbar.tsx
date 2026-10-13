@@ -28,12 +28,18 @@ export default function Navbar() {
           >
             All Songs Archive
           </Link>
-          <Link
+          <a
             href="/#contact"
+            onClick={(e) => {
+              if (pathname === '/') {
+                e.preventDefault();
+                document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-850 text-amber-400 border border-amber-500/30 text-xs font-ui font-medium transition-all cursor-pointer active:scale-95"
           >
             <span>Contact</span>
-          </Link>
+          </a>
         </div>
       </div>
     </nav>
